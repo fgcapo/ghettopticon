@@ -38,6 +38,8 @@ void setup() {
   Serial.begin(115200);
   pwm.begin();
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
+  pwm.setPWM(0, 0, SERVOMAX);
+  pwm.setPWM(1, 0, SERVOMIN);
 }
 
 void loop() {  

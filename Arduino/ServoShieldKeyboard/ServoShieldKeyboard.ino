@@ -32,7 +32,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVOMAX  560 // this is the 'maximum' pulse length count (out of 4096)
 
 //angle for each servo in degrees
-volatile int16_t servoAngles[] = {90, 0, 0, 0, 90, 90};
+volatile int16_t servoAngles[] = {180, 0, 0, 0, 90, 90};
 const int NUM_SERVOS = sizeof(servoAngles) / sizeof(servoAngles[0]);
 
 // our servo # counter
@@ -41,10 +41,13 @@ uint16_t servonum = 0;
 const int degreeInc = 2;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   pwm.begin();
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
+  
+  for(int i = 0; i < NUM_SERVOS; i++) 
+    pwm.setPWM(i, 0, map(servoAngles[i], 0, 180, SERVOMIN, SERVOMAX));
   
   Serial.println("Cardbot Servos activated.");
 }
