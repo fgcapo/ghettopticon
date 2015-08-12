@@ -32,24 +32,31 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVOMAX  560 // this is the 'maximum' pulse length count (out of 4096)
 
 // our servo # counter
-uint8_t servonum = 0;
+//uint8_t servonum = 0;
 
 void setup() {
   Serial.begin(115200);
   pwm.begin();
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
-  pwm.setPWM(0, 0, SERVOMAX);
-  pwm.setPWM(1, 0, SERVOMIN);
+  //pwm.setPWM(0, 0, SERVOMAX);
+  //pwm.setPWM(1, 0, SERVOMIN);
 }
 
 void loop() {  
-  if (Serial.available())
+  if (Serial.available() >= 3)
   {
+    byte servonum = Serial.read();
     byte angle = Serial.read();
+    byte newline = Serial.read();
+
+    if (newline != '\n') { return; }
     if (angle > 180) angle = 180;
+    /*Serial.print(servonum);
+    Serial.print(':');
+    Serial.print(angle);
+    Serial.println(" degrees");*/
 
     uint16_t pulselen = map(angle, 0, 180, SERVOMIN, SERVOMAX);
     pwm.setPWM(servonum, 0, pulselen);
-    servonum = (servonum + 1) % 2;
   }
 }
