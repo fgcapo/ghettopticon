@@ -51,10 +51,10 @@ void loop() {
 
     if (newline != '\n') { return; }
     if (angle > 180) angle = 180;
-    /*Serial.print(servonum);
-    Serial.print(':');
-    Serial.print(angle);
-    Serial.println(" degrees");*/
+    //Serial.print(servonum);
+    //Serial.print(':');
+    //Serial.print(angle);
+    //Serial.println(" degrees");
 
     uint16_t pulselen = map(angle, 0, 180, SERVOMIN, SERVOMAX);
     pwm.setPWM(servonum, 0, pulselen);

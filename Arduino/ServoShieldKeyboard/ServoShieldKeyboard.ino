@@ -32,7 +32,7 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 #define SERVOMAX  560 // this is the 'maximum' pulse length count (out of 4096)
 
 //angle for each servo in degrees
-volatile int16_t servoAngles[] = {180, 0, 0, 0, 90, 90};
+volatile int16_t servoAngles[] = {90, 0, 90, 0, 0, 90, 90};
 const int NUM_SERVOS = sizeof(servoAngles) / sizeof(servoAngles[0]);
 
 // our servo # counter
