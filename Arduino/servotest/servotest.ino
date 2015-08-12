@@ -47,6 +47,7 @@ void loop() {
     if (angle > 180) angle = 180;
 
     uint16_t pulselen = map(angle, 0, 180, SERVOMIN, SERVOMAX);
-    pwm.setPWM(0, 0, pulselen);
+    pwm.setPWM(servonum, 0, pulselen);
+    servonum = (servonum + 1) % 2;
   }
 }
