@@ -79,9 +79,9 @@ def k():
  #main_arm = so`urce.get('Armature')
  ob = bge.logic.getCurrentController().owner
 
- ob.channels['forearm'].joint_rotation = mathutils.Vector([0,0,0])
- ob.channels['upperarm'].joint_rotation = mathutils.Vector([x,0,0,])
+ ob.channels['forearm'].joint_rotation = mathutils.Vector([0,0,x])
  ob.channels['shoulder'].joint_rotation = mathutils.Vector([0,x,0])
+ ob.channels['upperarm'].joint_rotation = mathutils.Vector([x,0,0,])
  ob.update()
 
  x=x+.01
