@@ -24,3 +24,9 @@ The Python sends a control byte of 255 followed by n bytes, each of which repres
 The Arduino collects all n bytes, then it updates all servos at once.
 The next byte should be another control byte of 255.
 The reason for the control byte is that if you stop sending data, then reestablish connection, you need a way of telling the Arduino to start over the frame, so you don't end up adding data in the middle of a frame.
+
+credits : 
+
+Jacob Fenwick
+Fleeky Flanco
+Francesco Capodieci
