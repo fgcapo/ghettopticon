@@ -9,7 +9,9 @@ def keydown(key):
 
 ob = bge.logic.getCurrentController().owner
 
-arduino = None#serial.Serial('/dev/ttyACM0', 115200)
+arduino = None
+arduino = serial.Serial('/dev/ttyACM0', 115200)
+#arduino = serial.Serial('COM20', 115200)
 
 Inc = .1
 Servos = {}
@@ -25,17 +27,19 @@ class Servo:
     def new(id, initial, min, max):
         Servos[id] = Servo(id, initial, min, max)
 
-    def arduinoWrite(self):
+    def arduinoWrite(self):a
         degrees = int(self.pos * 180/pi)
-        print(degrees, end=" ")
+        print(self.id, ':', degrees, ' degrees', sep='')
         if arduino:
             arduino.write(struct.pack('>B', self.id))
             arduino.write(struct.pack('>B', degrees))
             arduino.write(struct.pack('>B', ord('\n')))
 
+
 Servo.new(0, 0, 0, pi)
 Servo.new(1, 0, 0, pi)
 Servo.new(2, 0, 0, pi)
+
 
 def moveBoneServo(name, id, axis, inc):
     servo = Servos[id]
@@ -56,21 +60,11 @@ def moveBoneServo(name, id, axis, inc):
 
 
 def k():
-    if keydown(bge.events.QKEY):
-        angle = moveBoneServo('shoulder', 0, 'y', Inc)   
-       
-    if keydown(bge.events.WKEY):
-        angle = moveBoneServo('shoulder', 0, 'y', -Inc)
+    if keydown(bge.events.QKEY): angle = moveBoneServo('shoulder', 0, 'y', Inc)
+    if keydown(bge.events.WKEY): angle = moveBoneServo('shoulder', 0, 'y', -Inc)
 
-    if keydown(bge.events.AKEY):
-        angle = moveBoneServo('upperarm', 1, 'z', Inc)    
+    if keydown(bge.events.AKEY): angle = moveBoneServo('upperarm', 1, 'z', Inc)
+    if keydown(bge.events.SKEY): angle = moveBoneServo('upperarm', 1, 'z', -Inc)
         
-    if keydown(bge.events.SKEY):
-        angle = moveBoneServo('upperarm', 1, 'z', -Inc)
-        
-    if keydown(bge.events.ZKEY):
-        angle = moveBoneServo('forearm', 2, 'z', Inc)   
-        
-    if keydown(bge.events.XKEY):
-        angle = moveBoneServo('forearm', 2, 'z', -Inc)
-
+    if keydown(bge.events.ZKEY): angle = moveBoneServo('forearm', 2, 'z', -Inc)
+    if keydown(bge.events.XKEY): angle = moveBoneServo('forearm', 2, 'z', Inc)
