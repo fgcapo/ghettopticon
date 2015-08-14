@@ -11,8 +11,11 @@ def keydown(key):
 ob = bge.logic.getCurrentController().owner
 
 arduino = None
-arduino = serial.Serial('/dev/ttyACM0', 115200)
+arduino = serial.Serial('/dev/ttyACM0', 9600, timeout=0.025)
 #arduino = serial.Serial('COM20', 115200)
+
+if arduino:
+    print (arduino.name)
 
 Inc = .01
 Servos = {}
@@ -45,7 +48,7 @@ class Servo:
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
         if self.name == 'shoulder': degrees = 180 - (degrees + 90)
-        return
+
         if arduino:
             arduino.write(struct.pack('>B', self.id))
             arduino.write(struct.pack('>B', degrees))
