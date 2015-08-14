@@ -1,87 +1,76 @@
-import mathutils
 import bge
-from math import pi
+import math
+from math import *
+import mathutils
 import serial
-import struct
 
-# Just shortening names here
-keyboard = bge.logic.keyboard
-JUST_ACTIVATED = bge.logic.KX_INPUT_JUST_ACTIVATED
+def keydown(key):
+    return bge.logic.keyboard.events[key] == bge.logic.KX_INPUT_ACTIVE
 
 ob = bge.logic.getCurrentController().owner
 
-Inc = .1
-servoAngles = {0:0, 1:0, 2:0}
-"""
-arduino = serial.Serial('/dev/ttyACM0', 115200)
+arduino = None#serial.Serial('/dev/ttyACM0', 115200)
 
-def moveBoneServo(name, servo, axis, inc):
-    global servoAngles
+Inc = .1
+Servos = {}
+
+class Servo:
+    """angles are stored in radians but converted to degrees when sent to uC"""
+    def __init__(self, id, initial, min, max):
+        self.id = id
+        self.pos = initial
+        self.min = min
+        self.max = max
     
-    servoAngles[servo] += inc
+    def new(id, initial, min, max):
+        Servos[id] = Servo(id, initial, min, max)
+
+    def arduinoWrite(self):
+        degrees = int(self.pos * 180/pi)
+        print(degrees, end=" ")
+        if arduino:
+            arduino.write(struct.pack('>B', self.id))
+            arduino.write(struct.pack('>B', degrees))
+            arduino.write(struct.pack('>B', ord('\n')))
+
+Servo.new(0, 0, 0, pi)
+Servo.new(1, 0, 0, pi)
+Servo.new(2, 0, 0, pi)
+
+def moveBoneServo(name, id, axis, inc):
+    servo = Servos[id]
+    pos = servo.pos + inc
+    pos = min(pos, servo.max)
+    pos = max(pos, servo.min)
+    servo.pos = pos
     
-    if (axis == 0): v = mathutils.Vector((servoAngles[servo], 0, 0))
-    if (axis == 1): v = mathutils.Vector((0, servoAngles[servo], 0))
-    if (axis == 2): v = mathutils.Vector((0, 0, servoAngles[servo]))
-    #v[axis] = servoAngles[servo]
+    servo.arduinoWrite()
+    
+    if (axis == 'x'): v = mathutils.Vector((pos, 0, 0))
+    if (axis == 'y'): v = mathutils.Vector((0, pos, 0))
+    if (axis == 'z'): v = mathutils.Vector((0, 0, pos))
     
     ob.channels[name].joint_rotation = v
-    ob.update()    
-    return servoAngles[servo]
+    ob.update()
+    return pos
 
-
-def arduinoWrite(servo, radians):
-    degrees = int(radians * 180 / pi)
-    #arduino.write(struct.pack('>B', servo))
-    #arduino.write(struct.pack('>B', degrees))
-    #arduino.write(struct.pack('>B', ord('\n')))
-    #print(angle, end=" ")
 
 def k():
-    global inc, servoAngles, ob
-    
-    if keyboard.events[bge.events.QKEY] == JUST_ACTIVATED:
-        #angle = moveBoneServo('shoulder', 0, 1, Inc)
-        #arduinoWrite(0, angle)        
-        #servoAngles[servo] += inc
-        ob = bge.logic.getCurrentController().owner
-        ob.channels['shoulder'].joint_rotation = mathutils.Vector([0, 1, 0])
+    if keydown(bge.events.QKEY):
+        angle = moveBoneServo('shoulder', 0, 'y', Inc)   
        
-    if keyboard.events[bge.events.WKEY] == JUST_ACTIVATED:
-        angle = moveBoneServo('shoulder', 0, 1, -Inc)
-        arduinoWrite(0, angle)
+    if keydown(bge.events.WKEY):
+        angle = moveBoneServo('shoulder', 0, 'y', -Inc)
 
-    if keyboard.events[bge.events.AKEY] == JUST_ACTIVATED:
-        angle = moveBoneServo('upperarm', 1, 0, Inc)
-        arduinoWrite(1, angle)        
+    if keydown(bge.events.AKEY):
+        angle = moveBoneServo('upperarm', 1, 'z', Inc)    
         
-    if keyboard.events[bge.events.SKEY] == JUST_ACTIVATED:
-        angle = moveBoneServo('upperarm', 1, 0, -Inc)
-        arduinoWrite(1, angle)
-
-    if keyboard.events[bge.events.ZKEY] == JUST_ACTIVATED:
-        angle = moveBoneServo('forearm', 2, 0, Inc)
-        arduinoWrite(2, angle)        
+    if keydown(bge.events.SKEY):
+        angle = moveBoneServo('upperarm', 1, 'z', -Inc)
         
-    if keyboard.events[bge.events.XKEY] == JUST_ACTIVATED:
-        angle = moveBoneServo('forearm', 2, 0, -Inc)
-        arduinoWrite(2, angle)
-"""
-x=0
-def k():
- global x
-# Get the whole bge scene
- #scene = bge.logic.getCurrentScene()
-# Helper vars for convenience
- #source = scene.objects
+    if keydown(bge.events.ZKEY):
+        angle = moveBoneServo('forearm', 2, 'z', Inc)   
+        
+    if keydown(bge.events.XKEY):
+        angle = moveBoneServo('forearm', 2, 'z', -Inc)
 
-# Get the whole Armature
- #main_arm = so`urce.get('Armature')
- ob = bge.logic.getCurrentController().owner
-
- ob.channels['forearm'].joint_rotation = mathutils.Vector([0,0,x])
- ob.channels['shoulder'].joint_rotation = mathutils.Vector([0,x,0])
- ob.channels['upperarm'].joint_rotation = mathutils.Vector([x,0,0,])
- ob.update()
-
- x=x+.01
