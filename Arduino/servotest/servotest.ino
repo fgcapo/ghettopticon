@@ -42,6 +42,9 @@ void setup() {
   pwm.setPWM(0, 0, SERVO_HALF);
   pwm.setPWM(1, 0, SERVO_MIN);
   pwm.setPWM(2, 0, SERVO_MAX);
+  pwm.setPWM(3, 0, SERVO_HALF);
+  pwm.setPWM(4, 0, SERVO_MAX);
+  pwm.setPWM(5, 0, SERVO_MIN);
 }
 
 void loop() {  

@@ -11,7 +11,7 @@ def keydown(key):
 ob = bge.logic.getCurrentController().owner
 
 arduino = None
-arduino = serial.Serial('/dev/ttyACM0', 9600)
+arduino = serial.Serial('/dev/ttyACM2', 9600)
 #arduino = serial.Serial('COM20', 115200)
 
 Inc = .01
@@ -44,17 +44,22 @@ class Servo:
         
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
-        if self.name == 'shoulder': degrees = 180 - (degrees + 90)
+        if self.name == 'shoulder.L': degrees = 180 - (degrees + 90)
+        if self.name == 'shoulder.R': degrees = 180 - (degrees + 90)
         
         if arduino:
             arduino.write(struct.pack('>B', self.id))
             arduino.write(struct.pack('>B', degrees))
             arduino.write(struct.pack('>B', ord('\n')))
 
-
-Servo.new(0, 'shoulder',    0,    -pi/2,      pi/2)
-Servo.new(1, 'upperarm',    0,     -pi,    0,      servoNegate=True)
-Servo.new(2, 'forearm',     0,     0,      pi,     servoFlip=True)
+#Left Arm
+Servo.new(0, 'shoulder.L',    0,    -pi/2,      pi/2)
+Servo.new(1, 'upperarm.L',    0,     -pi,    0,      servoNegate=True)
+Servo.new(2, 'forearm.L',     0,     0,      pi,     servoFlip=True)
+#Right Arm
+Servo.new(3, 'shoulder.R',    0,    -pi/2,      pi/2)
+Servo.new(4, 'upperarm.R',    0,     -pi,    0,      servoFlip=True, servoNegate=True)
+Servo.new(5, 'forearm.R',     0,     0,      pi,     )
 
 
 def moveBoneServo(name, id, axis, inc):
@@ -77,17 +82,32 @@ def moveBoneServo(name, id, axis, inc):
     return pos
 
 # set initial positions in blender space
-moveBoneServo('shoulder', 0, 'y', 0)
-moveBoneServo('upperarm', 1, 'x', 0)
-moveBoneServo('forearm',  2, 'x', 0)
+#Left Arm
+moveBoneServo('shoulder.L', 0, 'y', 0)
+moveBoneServo('upperarm.L', 1, 'x', 0)
+moveBoneServo('forearm.L',  2, 'x', 0)
+#Right Arm
+moveBoneServo('shoulder.R', 3, 'y', 0)
+moveBoneServo('upperarm.R', 4, 'x', 0)
+moveBoneServo('forearm.R',  5, 'x', 0)
 
 def k():
 
-    if keydown(bge.events.QKEY): angle = moveBoneServo('shoulder', 0, 'y', Inc)
-    if keydown(bge.events.WKEY): angle = moveBoneServo('shoulder', 0, 'y', -Inc)
+#Left Arm
+    if keydown(bge.events.QKEY): angle = moveBoneServo('shoulder.L', 0, 'y', Inc)
+    if keydown(bge.events.WKEY): angle = moveBoneServo('shoulder.L', 0, 'y', -Inc)
 
-    if keydown(bge.events.AKEY): angle = moveBoneServo('upperarm', 1, 'x', Inc)
-    if keydown(bge.events.SKEY): angle = moveBoneServo('upperarm', 1, 'x', -Inc)
+    if keydown(bge.events.AKEY): angle = moveBoneServo('upperarm.L', 1, 'x', Inc)
+    if keydown(bge.events.SKEY): angle = moveBoneServo('upperarm.L', 1, 'x', -Inc)
         
-    if keydown(bge.events.ZKEY): angle = moveBoneServo('forearm', 2, 'x', Inc)
-    if keydown(bge.events.XKEY): angle = moveBoneServo('forearm', 2, 'x', -Inc)
+    if keydown(bge.events.ZKEY): angle = moveBoneServo('forearm.L', 2, 'x', Inc)
+    if keydown(bge.events.XKEY): angle = moveBoneServo('forearm.L', 2, 'x', -Inc)
+#Right Arm
+    if keydown(bge.events.OKEY): angle = moveBoneServo('shoulder.R', 3, 'y', Inc)
+    if keydown(bge.events.PKEY): angle = moveBoneServo('shoulder.R', 3, 'y', -Inc)
+
+    if keydown(bge.events.KKEY): angle = moveBoneServo('upperarm.R', 4, 'x', Inc)
+    if keydown(bge.events.LKEY): angle =    moveBoneServo('upperarm.R', 4, 'x', -Inc)
+        
+    if keydown(bge.events.NKEY): angle = moveBoneServo('forearm.R', 5, 'x', Inc)
+    if keydown(bge.events.MKEY): angle = moveBoneServo('forearm.R', 5, 'x', -Inc)
