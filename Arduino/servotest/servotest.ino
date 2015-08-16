@@ -30,24 +30,33 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 // have!
 const int SERVO_MIN = 150; // this is the 'minimum' pulse length count (out of 4096)
 const int SERVO_MAX = 560; // this is the 'maximum' pulse length count (out of 4096)
-const int SERVO_HALF = map(90, 0, 180, SERVO_MIN, SERVO_MAX);
+//const int SERVO_HALF = map(90, 0, 180, SERVO_MIN, SERVO_MAX);
 
-// our servo # counter
-//uint8_t servonum = 0;
+// starting angles, not currently updated by commands
+int angles[] = {
+  90, 0, 180, 0,    // left shoulder, forearm, upperarm, hand
+  90, 0, 180, 0,    // right shoulder, forearm, upperarm, hand
+  0, 90, 0          // neck, nod, face
+};
+
+const int NUM_ANGLES = sizeof(angles) / sizeof(*angles);
+
+uint16_t pwmFromAngle(int angle) {
+  return map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
+}
 
 void setup() {
   Serial.begin(9600);
   pwm.begin();
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates
-  pwm.setPWM(0, 0, SERVO_HALF);
-  pwm.setPWM(1, 0, SERVO_MIN);
-  pwm.setPWM(2, 0, SERVO_MAX);
-  pwm.setPWM(3, 0, SERVO_HALF);
-  pwm.setPWM(4, 0, SERVO_MAX);
-  pwm.setPWM(5, 0, SERVO_MIN);
+  
+  for(int i = 0; i < NUM_ANGLES; i++) {
+    pwm.setPWM(i, 0, pwmFromAngle(angles[i]));
+  }
 }
 
 void loop() {  
+  // commands are 3 bytes long and end with \n
   if (Serial.available() >= 3)
   {
     byte servonum = Serial.read();
@@ -56,14 +65,13 @@ void loop() {
 
     if (newline != '\n') { return; }
     if (angle > 180) angle = 180;
-//Pyserial freezes blender when arduino says stuff and blender doesnt read it
 
+    //Pyserial freezes blender when arduino says stuff and blender doesnt read it
 /*    Serial.print(servonum);
     Serial.print(':');
     Serial.print(angle);
     Serial.println(" degrees");
 */
-    uint16_t pulselen = map(angle, 0, 180, SERVO_MIN, SERVO_MAX);
-    pwm.setPWM(servonum, 0, pulselen);
+    pwm.setPWM(servonum, 0, pwmFromAngle(angle));
   }
 }
