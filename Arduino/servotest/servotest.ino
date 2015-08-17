@@ -34,8 +34,8 @@ const int SERVO_MAX = 560; // this is the 'maximum' pulse length count (out of 4
 
 // starting angles, not currently updated by commands
 int angles[] = {
-  90, 0, 180, 0,    // left shoulder, forearm, upperarm, hand
-  90, 0, 180, 0,    // right shoulder, forearm, upperarm, hand
+  90, 0, 180, 0,    // left shoulder, upperarm, forearm, hand
+  90, 180, 0, 0,    // right shoulder, upperarm, forearm, hand
   0, 90, 0          // neck, nod, face
 };
 
@@ -67,11 +67,11 @@ void loop() {
     if (angle > 180) angle = 180;
 
     //Pyserial freezes blender when arduino says stuff and blender doesnt read it
-/*    Serial.print(servonum);
+    /*Serial.print(servonum);
     Serial.print(':');
     Serial.print(angle);
     Serial.println(" degrees");
 */
-    pwm.setPWM(servonum, 0, pwmFromAngle(angle));
+    pwm.setPWM(servonum, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX));
   }
 }

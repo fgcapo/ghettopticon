@@ -11,8 +11,13 @@ def keydown(key):
 ob = bge.logic.getCurrentController().owner
 
 arduino = None
-#arduino = serial.Serial('/dev/ttyACM2', 9600)
+arduino = serial.Serial('/dev/ttyACM0', 9600)
 #arduino = serial.Serial('COM20', 115200)
+
+if arduino and arduino.isOpen():
+    print(arduino.name)
+else:
+    print("arduino not opened")
 
 Inc = .01
 Servos = {}
@@ -81,18 +86,18 @@ def incrementBone(name, inc):
 
 #Left Arm
 Servo.new(0,    'shoulder.L',      'y',    pi/2,   0,      pi)
-Servo.new(1,    'upperarm.L',      'x',    0,      0,      pi,     servoNegate=True)
+Servo.new(1,    'upperarm.L',      'x',    0,      0,      pi)#,     servoNegate=True)
 Servo.new(2,    'forearm.L',       'x',    0,      0,      pi,     servoFlip=True)
-Servo.new(3,    'hand.L',          'y',    0,      0,      pi,     servoFlip=True)
+Servo.new(3,    'hand.L',          'y',    0,      0,      pi)#,     servoFlip=True)
 
 #Right Arm
 Servo.new(4,    'shoulder.R',      'y',    pi/2,   0,      pi)
 Servo.new(5,    'upperarm.R',      'x',    0,     -pi,     0,      servoFlip=True, servoNegate=True)
 Servo.new(6,    'forearm.R',       'x',    0,      0,      pi)
-Servo.new(7,    'hand.R',          'y',    0,      0,      pi,     servoFlip=True)
+Servo.new(7,    'hand.R',          'y',    0,      0,      pi)#,     servoFlip=True)
 
 #Head
-Servo.new(8,    'neck',            'y',    0,      -pi,     0)
+Servo.new(8,    'neck',            'y',    0,      -pi,     0,      servoNegate=True)
 Servo.new(9,    'nod',             'x',    0,      0,       pi)
 Servo.new(10,   'face',            'y',    0,      0,       pi)
 
