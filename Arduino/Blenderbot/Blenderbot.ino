@@ -1,32 +1,4 @@
 /*
- Snobot Controller
- 
- This sketch is used to control the snobot 
- Written by Christopher P. Yarger      cpyarger@gmail.com
- Copyright 2013 CPYarger IT Services.  http://cpyarger.com
- Released under GPLv3.
- 
- 
- 
- Controls(All CAPS):
- 
- Stop       = Q
- Forward    = W
- Backward   = S
- Left       = A
- Rught      = D
- Speed-Up   = O
- Speed-Down = L 
- Run_Demo   = T
- 
- NOTES:
- 
- * Speed control returns values between 25 and 255.
- * The stop command bypasses the speed controller, 
- with the excaption of issuing a speed reset command.
- * You can only change speed when the motors are in use.
- * any attempt to change speed otherwise will result in 
- the value being reset to 25
  
  */
 /*#include <NewPing.h>
@@ -54,7 +26,7 @@ const int rBLI = 8;
 const int lALI = 9;    // LED connected to digital pin 9
 const int lBLI = 10;
 
-const int MAX_SPEED = 150;
+const int MAX_SPEED = 100;
 const int MOTOR_INC = 10;  // motor speed increment
 
 // left and right motor settings
@@ -125,15 +97,24 @@ void loop() {
     stopMotors();
   }
   
-  if (Serial.available()) {
+  // commands are 3 bytes long
+  if (Serial.available() > 3) {
     char cmd = Serial.read();
+    char val = Serial.read();    //only used in L and R
+    char newline = Serial.read();
+	
     switch(cmd) {
-      case '~': heartBeatReceived();                          break;
+      case '~': heartBeatReceived(); break;
+      case ' ': stopMotors(); break;
+
       case 'e': speedLeft  += MOTOR_INC; updateMotorValues(); break;
       case 'd': speedLeft  -= MOTOR_INC; updateMotorValues(); break;
       case 'u': speedRight += MOTOR_INC; updateMotorValues(); break;
       case 'h': speedRight -= MOTOR_INC; updateMotorValues(); break;
-      case ' ': stopMotors(); break;
+  
+      case 'L': speedLeft = val;         updateMotorValues(); break;
+      case 'R': speedRight = val;        updateMotorValues(); break;
+  
       default: return;
     }
   }
