@@ -8,12 +8,6 @@
 /
 //NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
 
-float sspeed = 55;
-float cspeed = 0;
-unsigned char last; 
-int turn_delay = 200; //delay used to smooth out driving
-int cmax = 150; // max speed. no higher than 250
-int cinterval = 10; // speed increase / decrease interval
 int avoid_on = 0;
 int avoid_speed=55; //Turning speed for object avoidence
 int pingd = 50; //object detection distace
@@ -27,15 +21,15 @@ const int lALI = 9;    // LED connected to digital pin 9
 const int lBLI = 10;
 
 const int MAX_SPEED = 100;
-const int MOTOR_INC = 10;  // motor speed increment
+const int MOTOR_INC = 10;  // motor speed increment for interactive control
 
-// left and right motor settings
-// positive is foward, negative is backwards
+// left and right motor pin values
+// positive is forward, negative is backwards
 // TODO what are max values?
 int speedLeft = 0;
 int speedRight = 0;
 
-void updateMotorValues() {
+void updateMotors() {
 
   // forward and back seem to be flipped?  
   speedLeft = constrain(speedLeft, -MAX_SPEED, MAX_SPEED);
@@ -66,7 +60,7 @@ void updateMotorValues() {
 
 void stopMotors() {
   speedLeft = speedRight = 0;
-  updateMotorValues();    //likely redundant but can't hurt
+  updateMotors();    //likely redundant but can't hurt
 }
 
 
@@ -82,7 +76,7 @@ void setup()  {
   Serial.println("   Drive Safely!");
 } 
 
-const int HEARTBEAT_TIMEOUT = 100;  //milliseconds
+const int HEART_BEAT_TIMEOUT = 100;  //milliseconds
 unsigned long lastHeatBeatReceived = millis();
 
 void heartBeatReceived() {
@@ -93,7 +87,7 @@ void loop() {
 
   // check failsafe and stop motors if we haven't received a heart beat recently enough
   unsigned long now = millis();
-  if (now > lastHeatBeatReceived + HEARTBEAT_TIMEOUT) {
+  if (now > lastHeatBeatReceived + HEART_BEAT_TIMEOUT) {
     stopMotors();
   }
   
@@ -107,13 +101,13 @@ void loop() {
       case '~': heartBeatReceived(); break;
       case ' ': stopMotors(); break;
 
-      case 'e': speedLeft  += MOTOR_INC; updateMotorValues(); break;
-      case 'd': speedLeft  -= MOTOR_INC; updateMotorValues(); break;
-      case 'u': speedRight += MOTOR_INC; updateMotorValues(); break;
-      case 'h': speedRight -= MOTOR_INC; updateMotorValues(); break;
+      case 'e': speedLeft  += MOTOR_INC; updateMotors(); break;
+      case 'd': speedLeft  -= MOTOR_INC; updateMotors(); break;
+      case 'u': speedRight += MOTOR_INC; updateMotors(); break;
+      case 'h': speedRight -= MOTOR_INC; updateMotors(); break;
   
-      case 'L': speedLeft = val;         updateMotorValues(); break;
-      case 'R': speedRight = val;        updateMotorValues(); break;
+      case 'L': speedLeft = val;         updateMotors(); break;
+      case 'R': speedRight = val;        updateMotors(); break;
   
       default: return;
     }
