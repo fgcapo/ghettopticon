@@ -9,62 +9,51 @@ import struct
 def keydown(key):
     return bge.logic.keyboard.events[key] == bge.logic.KX_INPUT_JUST_ACTIVATED
 
-cont = bge.logic.getCurrentController()
-ob = cont.owner
-
 ########################################################################
-arduino = None
-arduino = serial.Serial('/dev/ttyACM0', 9600)
-#arduino = serial.Serial('COM23', 9600)
+ucChair = None
+#ucChair = serial.Serial('/dev/ttyACM0', 9600)
+#ucChair = serial.Serial('COM23', 9600)
 
-if arduino and arduino.isOpen():
-    print(arduino.name)
+if ucChair and ucChair.isOpen():
+    print('opened ', ucChair.name)
 else:
-    print("arduino not opened")
+    print("ucChair not opened")
 
-def sendArduinoByte(val):
-    if arduino == None: return
-    arduino.write(struct.pack('>B', ord(val)))
-
-# arguments are letter, integer
-def sendArduinoCmd(cmd, val=0):
-    if arduino == None: return
-    arduino.write(struct.pack('>B', ord(cmd)))
-    arduino.write(struct.pack('>B', val))
-    arduino.write(struct.pack('>B', ord('\n')))
+# arguments are letter, integer (signed byte)
+def sendChairCmd(cmd, val=0):
+    #print(cmd)
+    if ucChair == None: return
+    ucChair.write(struct.pack('>B', ord(cmd)))
+    ucChair.write(struct.pack('>b', val))
+    ucChair.write(struct.pack('>B', ord('\n')))
 
 #########################################################################
 
 def k():
     # heartbeat character sent every frame;
-    # uC will stop motion if this is not received in time
-    sendArduinoByte('~')
+    # uC will stop motion if this is not received after a short amount of time
+    sendChairCmd('~')
 
-    if keydown(bge.events.EKEY):
-        sendArduinoCmd('e')
-        #ob.localPosition.x = 10
-        #ob.localPosition.y = 10
-
-    if keydown(bge.events.DKEY): sendArduinoCmd('d')
-    if keydown(bge.events.UKEY): sendArduinoCmd('u')
-    if keydown(bge.events.HKEY): sendArduinoCmd('h')
-    if keydown(bge.events.SPACEKEY): sendArduinoCmd(' ')
+    if keydown(bge.events.EKEY): sendChairCmd('e')
+    if keydown(bge.events.DKEY): sendChairCmd('d')
+    if keydown(bge.events.UKEY): sendChairCmd('u')
+    if keydown(bge.events.HKEY): sendChairCmd('h')
+    if keydown(bge.events.SPACEKEY): sendChairCmd(' ')
 
 
 mousePos = [0, 0]
-
-#set speed for camera movement
-sensitivity = .1
+mouseSensitivity = .1
  
-def m():
+def m(cont):
+    ob = cont.owner
     mouse = cont.sensors["Mouse"]
     
     h = render.getWindowHeight()//2
     w = render.getWindowWidth()//2
     
     mouseDelta = [
-        (mouse.position[0] - w) * sensitivity,
-        (h - mouse.position[1]) * sensitivity]
+        (mouse.position[0] - w) * mouseSensitivity,
+        (h - mouse.position[1]) * mouseSensitivity]
 
     render.setMousePosition(w, h)
 
@@ -83,5 +72,5 @@ def m():
     ]
 
     #send new motor positions to uC
-    sendArduinoCmd('R', int(motorPos[0]))
-    sendArduinoCmd('L', int(motorPos[1]))
+    sendChairCmd('R', int(motorPos[0]))
+    sendChairCmd('L', int(motorPos[1]))
