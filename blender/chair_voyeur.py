@@ -33,11 +33,6 @@ mousePos = [0, 0]
 mouseSensitivity = .05
 cos45 = 1/sqrt(2)
 
-centerY = render.getWindowHeight()//2
-centerX = render.getWindowWidth()//2
-
-# move mouse cursor to center
-render.setMousePosition(centerX, centerY)
 
 # keyboard subroutine for interactive wheelchair movement
 # control left and right motors independently, as in controlling a tank
@@ -73,48 +68,34 @@ def k():
        sendChairCmd('R', int(-speed))
        sendChairCmd('L', int(-speed * Lbias))      
 
-# mouse tracking subroutine for interactive wheelchair movement
-# This routine maps mouse position to wheelchair velocity, which was the simplest way I could think of
-#  to control the chair. I believe mapping the mouse position to the chair position would require
-#  mathematical integration plus some planning, as the chair can only move forward and back.
-#
-# Moving the mouse forward from the starting location increases forward speed.
-# Moving backward from starting location increases backward speed.
-# Moving left or right of the starting location makes the char spin in place (?)
-# All other mouse positions are interpolations of the above, ex: forward-right makes a left turn
-#  (can invert this easily).
-# 
-# Use spacebar to stop. 
-# TODO test mouse after hitting spacebar
+def 
+
+lastPos = None
+lastTime = None
+
 def m(cont):
-    global mousePos, mouseSensitivity
+    global lastPos, lastTime
     ob = cont.owner
-    mouse = cont.sensors["Mouse"]
     
-    # calculate the amount mouse cursor moved from the center since last frame
-    mouseDelta = [
-        (mouse.position[0] - centerX) * mouseSensitivity,
-        (centerY - mouse.position[1]) * mouseSensitivity]
+    if lastPos:
+        deltaPos = [
+            ob.localPosition.x - lastPos[0],
+            ob.localPosition.y - lastPos[1]]
+        
+        deltaTime = ob.time - lastTime
+        
+        # convert units to speed
+        currentDisp = sqrt(deltaPos[0]**2 + deltaPos[1]**2)
+        currentSpeed = currentDisp / deltaTime
+        
+        
+        
+        speed = 7  # inches per second
+        deltaPos[0] 
 
-    # move mouse cursor back to center
-    render.setMousePosition(centerX, centerY)
-
-    # update our secret internal mouse position
-    mousePos[0] += mouseDelta[0]
-    mousePos[1] += mouseDelta[1]
-
-    # move cube onscreen
-    ob.localPosition.x = mousePos[0]
-    ob.localPosition.y = mousePos[1]
-
-    #rotate 45 degrees to convert to motor impulses
-    
-    motorPos = [
-        -mousePos[0]*cos45 + mousePos[1]*cos45,
-        (mousePos[0]*cos45 + mousePos[1]*cos45),
-    ]
-
-    print(mousePos)
+    lastPos = ob.localPosition
+    lastTime = own.time
+ 
 
     #send new motor positions to uC
     sendChairCmd('R', int(motorPos[0]))
