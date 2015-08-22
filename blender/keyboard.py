@@ -10,15 +10,48 @@ def keydown(key):
 
 ob = bge.logic.getCurrentController().owner
 
-arduino = None
-arduino = serial.Serial('/dev/ttyACM0', 9600)
-#arduino = serial.Serial('COM20', 115200)
+#####################################################################################
+# simple way to keep a global dict of all microcontrollers,
+# and to identify microcontrollers by their vender and product ID
+UCs = {}
+bge.logic.globalDict['UCs'] = UCs
 
-if arduino and arduino.isOpen():
-    print(arduino.name)
-else:
-    print("arduino not opened")
+import serial.tools.list_ports
+baud = 9600
+ucNamesToBoardIDs = {'chair':'', 'servos':''}
 
+#ports = list(serial.tools.list_ports.comports())
+for p in serial.tools.list_ports.comports():
+    print(p)
+    print(dir(p))
+    devPath = p[0]
+
+    # find each serial device named in ucNamesToBoardIDs, open it, and save it in UCs under its assigned name
+    for name, boardID in ucNamesToBoardIDs.items():
+        if p[2].startsWith(boardID):
+            s = serial.Serial(devPath, baud)
+            if s and s.isOpen():
+                print(name, ' opened on path: ', s.name)
+                UCs[name] = s
+            else:
+                print('ERROR: ', name, ' failed to open on path: ', devPath)
+
+def getUC(name):
+    UCs = bge.logic.globalDict['UCs']
+    if name not in UCs: return None
+    return UCs[name]
+    
+                
+# arguments are letter, integer (signed byte)
+def sendChairCmd(cmd, val=0):
+    #print(cmd)
+    ucChair = getUC('chair')
+    if not ucChair: return
+    ucChair.write(struct.pack('>B', ord(cmd)))
+    ucChair.write(struct.pack('>b', val))
+    ucChair.write(struct.pack('>B', ord('\n')))
+                
+                
 Inc = .01
 Servos = {}
 
@@ -44,15 +77,17 @@ class Servo:
         s = Servo(id, name, initial, axis, min, max, servoNegate, servoFlip)
         Servos[name] = s
     
-    def increment(self, inc):
-        self.move(self.pos + inc)
+    def increment(self, inc, updateBlender=True):
+        self.move(self.pos + inc, updateBlender)
         
-    def move(self, pos):
+    def move(self, pos, updateBlender=True):
         pos = min(pos, self.max)
         pos = max(pos, self.min)
         self.pos = pos
         
         self.arduinoWrite()
+        
+        if not updateBlender: return
         
         axis = self.axis
         if   (axis == 'x'): v = mathutils.Vector((pos, 0, 0))
@@ -72,10 +107,11 @@ class Servo:
         #if self.name == 'shoulder.L': degrees = 180 - (degrees + 90)
         #if self.name == 'shoulder.R': degrees = 180 - (degrees + 90)
         
-        if arduino:
-            arduino.write(struct.pack('>B', self.id))
-            arduino.write(struct.pack('>B', degrees))
-            arduino.write(struct.pack('>B', ord('\n')))
+        arduino = getUC('servos')
+        if not arduino: return
+        arduino.write(struct.pack('>B', self.id))
+        arduino.write(struct.pack('>B', degrees))
+        arduino.write(struct.pack('>B', ord('\n')))
 
 def incrementBone(name, inc):
     servo = Servos[name]
@@ -103,6 +139,14 @@ Servo.new(10,   'face',            'y',    0,      0,       pi)
 
 # set initial positions in blender space
 for name, servo in Servos.items(): servo.increment(0)
+
+def voyeur(cont):
+    ob = cont.owner
+    
+    for name, servo in Servos.items():
+        angle = getattr(ob.channels[servo.name].joint_rotation, servo.axis)
+        print(angle)
+        #servo.move(angle, False)
 
 def k():
 #Left Arm
