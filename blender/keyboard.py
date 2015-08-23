@@ -37,7 +37,9 @@ for p in serial.tools.list_ports.comports():
             else:
                 print('ERROR: ', name, 'failed to open on path:', devPath)
 """
-UCs['servos'] = serial.Serial('COM22', baud)
+
+UCs['servos'] = serial.Serial('/dev/ttyACM0', baud)
+
 def getUC(name):
     UCs = bge.logic.globalDict['UCs']
     if name not in UCs: return None
@@ -108,10 +110,8 @@ class Servo:
         
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
-        #if self.name == 'shoulder.L': degrees = 180 - (degrees + 90)
-        #if self.name == 'shoulder.R': degrees = 180 - (degrees + 90)
-
-        print(self.name, ':', degrees, ' degrees in Servo space', sep='')
+        
+        #print(self.name, ':', degrees, ' degrees in Servo space', sep='')
         
         arduino = getUC('servos')
         if not arduino: 
@@ -145,7 +145,7 @@ Servo.new(7,    'hand.R',          'y',    0,      0,      pi)#,     servoFlip=T
 
 #Head
 Servo.new(8,    'neck',            'y',    0,      -pi,     0,      servoNegate=True)
-Servo.new(9,    'nod',             'x',    0,      0,       pi)
+Servo.new(9,    'nod',             'z',    0,      0,       pi)
 Servo.new(10,   'face',            'y',    0,      0,       pi)
 
 # set initial positions in blender space
