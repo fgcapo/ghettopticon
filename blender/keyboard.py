@@ -18,30 +18,31 @@ bge.logic.globalDict['UCs'] = UCs
 
 import serial.tools.list_ports
 baud = 9600
-ucNamesToBoardIDs = {'chair':'', 'servos':''}
+ucNamesToBoardIDs = {
+    'chair':    'USB VID:PID=2341:0042',
+    'servos':   'USB VID:PID=2a03:0043',
+    }
 
-#ports = list(serial.tools.list_ports.comports())
 for p in serial.tools.list_ports.comports():
-    print(p)
-    print(dir(p))
+    #print(p)
     devPath = p[0]
 
     # find each serial device named in ucNamesToBoardIDs, open it, and save it in UCs under its assigned name
     for name, boardID in ucNamesToBoardIDs.items():
-        if p[2].startsWith(boardID):
+        if p[2].startswith(boardID):
             s = serial.Serial(devPath, baud)
             if s and s.isOpen():
-                print(name, ' opened on path: ', s.name)
+                print(name, 'opened on path:', s.name)
                 UCs[name] = s
             else:
-                print('ERROR: ', name, ' failed to open on path: ', devPath)
+                print('ERROR: ', name, 'failed to open on path:', devPath)
 
 def getUC(name):
     UCs = bge.logic.globalDict['UCs']
     if name not in UCs: return None
     return UCs[name]
-    
-                
+
+
 # arguments are letter, integer (signed byte)
 def sendChairCmd(cmd, val=0):
     #print(cmd)
@@ -83,9 +84,11 @@ class Servo:
     def move(self, pos, updateBlender=True):
         pos = min(pos, self.max)
         pos = max(pos, self.min)
+        
+        changed = self.pos != pos
         self.pos = pos
         
-        self.arduinoWrite()
+        if changed: self.arduinoWrite()
         
         if not updateBlender: return
         
@@ -100,7 +103,7 @@ class Servo:
 
     def arduinoWrite(self):
         degrees = int(self.pos * 180/pi)
-        print(self.id, ':', degrees, ' degrees in blender space', sep='')
+        print(self.name, ':', degrees, ' degrees in blender space', sep='')
         
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
@@ -108,7 +111,9 @@ class Servo:
         #if self.name == 'shoulder.R': degrees = 180 - (degrees + 90)
         
         arduino = getUC('servos')
-        if not arduino: return
+        if not arduino: 
+            print('ERROR servos arduino no found')
+            return
         arduino.write(struct.pack('>B', self.id))
         arduino.write(struct.pack('>B', degrees))
         arduino.write(struct.pack('>B', ord('\n')))
@@ -127,7 +132,7 @@ Servo.new(2,    'forearm.L',       'x',    0,      0,      pi,     servoFlip=Tru
 Servo.new(3,    'hand.L',          'y',    0,      0,      pi)#,     servoFlip=True)
 
 #Right Arm
-Servo.new(4,    'shoulder.R',      'y',    pi/2,   0,      pi)
+Servo.new(4,    'shoulder.R',      'y',    -pi/2,   -pi, 0,        servoNegate=True)
 Servo.new(5,    'upperarm.R',      'x',    0,     -pi,     0,      servoFlip=True, servoNegate=True)
 Servo.new(6,    'forearm.R',       'x',    0,      0,      pi)
 Servo.new(7,    'hand.R',          'y',    0,      0,      pi)#,     servoFlip=True)
@@ -145,8 +150,8 @@ def voyeur(cont):
     
     for name, servo in Servos.items():
         angle = getattr(ob.channels[servo.name].joint_rotation, servo.axis)
-        print(angle)
-        #servo.move(angle, False)
+        #print(name, '\t', angle)
+        servo.move(angle, False)
 
 def k():
 #Left Arm
