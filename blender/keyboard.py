@@ -38,7 +38,10 @@ for p in serial.tools.list_ports.comports():
                 print('ERROR: ', name, 'failed to open on path:', devPath)
 """
 
-UCs['servos'] = serial.Serial('/dev/ttyACM0', baud)
+s = serial.Serial('/dev/ttyACM5', baud)
+if s and s.isOpen(): print('opened', s.name)
+else: print('error opening servos')
+UCs['servos'] = s
 
 def getUC(name):
     UCs = bge.logic.globalDict['UCs']
