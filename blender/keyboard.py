@@ -20,11 +20,11 @@ import serial.tools.list_ports
 baud = 9600
 ucNamesToBoardIDs = {
     'chair':    'USB VID:PID=2341:0042',
-    'servos':   'USB VID:PID=2a03:0043',
-    }
-
+    'servos':   'USB VID:PID=2A03:0043',
+}
+"""
 for p in serial.tools.list_ports.comports():
-    #print(p)
+    print(p)
     devPath = p[0]
 
     # find each serial device named in ucNamesToBoardIDs, open it, and save it in UCs under its assigned name
@@ -36,7 +36,8 @@ for p in serial.tools.list_ports.comports():
                 UCs[name] = s
             else:
                 print('ERROR: ', name, 'failed to open on path:', devPath)
-
+"""
+UCs['servos'] = serial.Serial('COM22', baud)
 def getUC(name):
     UCs = bge.logic.globalDict['UCs']
     if name not in UCs: return None
@@ -103,12 +104,14 @@ class Servo:
 
     def arduinoWrite(self):
         degrees = int(self.pos * 180/pi)
-        print(self.name, ':', degrees, ' degrees in blender space', sep='')
+        #print(self.name, ':', degrees, ' degrees in blender space', sep='')
         
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
         #if self.name == 'shoulder.L': degrees = 180 - (degrees + 90)
         #if self.name == 'shoulder.R': degrees = 180 - (degrees + 90)
+
+        print(self.name, ':', degrees, ' degrees in Servo space', sep='')
         
         arduino = getUC('servos')
         if not arduino: 
@@ -125,15 +128,18 @@ def incrementBone(name, inc):
 ##############################################################################
 # servo joint definitions
 
+#left arm fully extended = 180
+#right arm fully extended = 0
+
 #Left Arm
-Servo.new(0,    'shoulder.L',      'y',    pi/2,   0,      pi)
+Servo.new(0,    'shoulder.L',      'y',    pi/2,   0,      pi,      servoFlip=True)
 Servo.new(1,    'upperarm.L',      'x',    0,      0,      pi)#,     servoNegate=True)
 Servo.new(2,    'forearm.L',       'x',    0,      0,      pi,     servoFlip=True)
 Servo.new(3,    'hand.L',          'y',    0,      0,      pi)#,     servoFlip=True)
 
 #Right Arm
-Servo.new(4,    'shoulder.R',      'y',    -pi/2,   -pi, 0,        servoNegate=True)
-Servo.new(5,    'upperarm.R',      'x',    0,     -pi,     0,      servoFlip=True, servoNegate=True)
+Servo.new(4,    'shoulder.R',      'y',    -pi/2,  -pi,    0,      servoNegate=True)
+Servo.new(5,    'upperarm.R',      'x',    0,      -pi,    0,      servoFlip=True, servoNegate=True)
 Servo.new(6,    'forearm.R',       'x',    0,      0,      pi)
 Servo.new(7,    'hand.R',          'y',    0,      0,      pi)#,     servoFlip=True)
 
