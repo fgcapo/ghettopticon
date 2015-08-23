@@ -53,6 +53,8 @@ void setup() {
   for(int i = 0; i < NUM_ANGLES; i++) {
     pwm.setPWM(i, 0, pwmFromAngle(angles[i]));
   }
+  
+  Serial.print("Servos hello\n");
 }
 
 void loop() {  
@@ -70,8 +72,8 @@ void loop() {
     /*Serial.print(servonum);
     Serial.print(':');
     Serial.print(angle);
-    Serial.println(" degrees");
-*/
+    Serial.println(" degrees");*/
+
     pwm.setPWM(servonum, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX));
   }
 }

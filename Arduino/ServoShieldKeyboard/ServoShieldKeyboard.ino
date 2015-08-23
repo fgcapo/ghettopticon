@@ -45,7 +45,7 @@ uint16_t servonum = 0;
 const int degreeInc = 2;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
 
   pwm.begin();
   pwm.setPWMFreq(60);  // Analog servos run at ~60 Hz updates

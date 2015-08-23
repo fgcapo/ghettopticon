@@ -21,34 +21,36 @@ const int lALI = 9;    // LED connected to digital pin 9
 const int lBLI = 10;
 
 const int MAX_SPEED = 100;
-const int MOTOR_INC = 10;  // motor speed increment for interactive control
+//const int MOTOR_INC = 10;  // motor speed increment for interactive control
+#define INC_LEFT 8.7
+#define INC_RIGHT 10
 
 // left and right motor pin values
 // positive is forward, negative is backwards
 // TODO what are max values?
-int speedLeft = 0;
-int speedRight = 0;
+float speedLeft = 0;
+float speedRight = 0;
 
 void updateMotors() {
 
   // forward and back seem to be flipped?  
-  speedLeft = constrain(speedLeft, -MAX_SPEED, MAX_SPEED);
-  if (speedLeft >= 0) {
+  int left = constrain(round(speedLeft), -MAX_SPEED, MAX_SPEED);
+  if (left >= 0) {
     analogWrite(lALI, 0);
-    analogWrite(lBLI, speedLeft);
+    analogWrite(lBLI, left);
   }
   else {
-    analogWrite(lALI, -speedLeft);
+    analogWrite(lALI, -left);
     analogWrite(lBLI, 0);
   }
   
-  speedRight = constrain(speedRight, -MAX_SPEED, MAX_SPEED);
-  if (speedRight >= 0) {
+  int right = constrain(round(speedRight), -MAX_SPEED, MAX_SPEED);
+  if (right >= 0) {
     analogWrite(rALI, 0);
-    analogWrite(rBLI, speedRight);
+    analogWrite(rBLI, right);
   }
   else {
-    analogWrite(rALI, -speedRight);
+    analogWrite(rALI, -right);
     analogWrite(rBLI, 0);
   }
 
@@ -72,8 +74,7 @@ void setup()  {
   pinMode(lBLI, OUTPUT); 
   // Lets start the serial
   Serial.begin(9600);
-  Serial.println(" Welcome To the snobot controls"); 
-  Serial.println("   Drive Safely!");
+  Serial.println(" Welcome To the blenderbot controls"); 
 } 
 
 const int HEART_BEAT_TIMEOUT = 100;  //milliseconds
@@ -92,22 +93,23 @@ void loop() {
   }
   
   // commands are 3 bytes long
-  if (Serial.available() > 3) {
+  if (Serial.available()) {
     char cmd = Serial.read();
-    char val = Serial.read();    //only used in L and R
-    char newline = Serial.read();
-	
+    char val = 0;//Serial.read();    //only used in L and R
+    //char newline = Serial.read();
+    //Serial.println(cmd);
+    
     switch(cmd) {
       case '~': heartBeatReceived(); break;
       case ' ': stopMotors(); break;
 
-      case 'e': speedLeft  += MOTOR_INC; updateMotors(); break;
-      case 'd': speedLeft  -= MOTOR_INC; updateMotors(); break;
-      case 'u': speedRight += MOTOR_INC; updateMotors(); break;
-      case 'h': speedRight -= MOTOR_INC; updateMotors(); break;
+      case 'L': speedLeft  += INC_LEFT;  updateMotors(); break;
+      case 'l': speedLeft  -= INC_LEFT;  updateMotors(); break;
+      case 'R': speedRight += INC_RIGHT; updateMotors(); break;
+      case 'r': speedRight -= INC_RIGHT; updateMotors(); break;
   
-      case 'L': speedLeft = val;         updateMotors(); break;
-      case 'R': speedRight = val;        updateMotors(); break;
+      //case 'L': speedLeft = val;         updateMotors(); break;
+      //case 'R': speedRight = val;        updateMotors(); break;
   
       default: return;
     }

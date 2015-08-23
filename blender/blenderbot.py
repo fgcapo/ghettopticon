@@ -11,7 +11,7 @@ def keydown(key):
 
 ########################################################################
 ucChair = None
-ucChair = serial.Serial('/dev/ttyACM0', 9600)
+ucChair = serial.Serial('/dev/ttyACM3', 9600)
 #ucChair = serial.Serial('COM23', 9600)
 
 if ucChair and ucChair.isOpen():
@@ -21,11 +21,11 @@ else:
 
 # arguments are letter, integer (signed byte)
 def sendChairCmd(cmd, val=0):
-    #print(cmd)
     if ucChair == None: return
+    if cmd != '~' :print(cmd)
     ucChair.write(struct.pack('>B', ord(cmd)))
-    ucChair.write(struct.pack('>b', val))
-    ucChair.write(struct.pack('>B', ord('\n')))
+    #ucChair.write(struct.pack('>b', val))
+    #ucChair.write(struct.pack('>B', ord('\n')))
 
 #########################################################################
 
@@ -43,27 +43,27 @@ render.setMousePosition(centerX, centerY)
 # control left and right motors independently, as in controlling a tank
 # each motor can move forward or backward
 # hit spacebar to stop motors immediately
-def k():
+def k(cont):
     global mousePos
     # heartbeat character sent every frame;
     # uC will stop motion if this is not received after a short amount of time
     sendChairCmd('~')
 
     # left motor increase/decrease speed
-    if keydown(bge.events.EKEY): sendChairCmd('e')
-    if keydown(bge.events.DKEY): sendChairCmd('d')
+    if keydown(bge.events.UKEY): sendChairCmd('L')
+    if keydown(bge.events.HKEY): sendChairCmd('l')
     # right motor increase/decrease speed
-    if keydown(bge.events.UKEY): sendChairCmd('u')
-    if keydown(bge.events.HKEY): sendChairCmd('h')
+    if keydown(bge.events.EKEY): sendChairCmd('R')
+    if keydown(bge.events.DKEY): sendChairCmd('r')
     
     # full stop
     if keydown(bge.events.SPACEKEY):
         sendChairCmd(' ')
         print('STOP')
         mousePos = [0, 0]   #reset internal mouse position so that further mouse movement starts at zero
-        tmpM = [0, 0]
+        #tmpM = [0, 0]
     
-    speed = 40      # = 7 inches per second
+    """speed = 40      # = 7 inches per second
     Lbias = .87
 
     if keydown(bge.events.FKEY):
@@ -71,7 +71,7 @@ def k():
        sendChairCmd('L', int(speed * Lbias))      
     if keydown(bge.events.BKEY):
        sendChairCmd('R', int(-speed))
-       sendChairCmd('L', int(-speed * Lbias))      
+       sendChairCmd('L', int(-speed * Lbias))"""
 
 # mouse tracking subroutine for interactive wheelchair movement
 # This routine maps mouse position to wheelchair velocity, which was the simplest way I could think of
@@ -107,8 +107,7 @@ def m(cont):
     ob.localPosition.x = mousePos[0]
     ob.localPosition.y = mousePos[1]
 
-    #rotate 45 degrees to convert to motor impulses
-    
+    # rotate 45 degrees to convert to motor impulses
     motorPos = [
         -mousePos[0]*cos45 + mousePos[1]*cos45,
         (mousePos[0]*cos45 + mousePos[1]*cos45),
@@ -116,6 +115,7 @@ def m(cont):
 
     print(mousePos)
 
-    #send new motor positions to uC
-    sendChairCmd('R', int(motorPos[0]))
-    sendChairCmd('L', int(motorPos[1]))
+    # send new motor positions to uC
+    # NO LONGER SUPPORTED
+    #sendChairCmd('R', int(motorPos[0]))
+    #sendChairCmd('L', int(motorPos[1]))

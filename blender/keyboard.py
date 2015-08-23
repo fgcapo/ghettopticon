@@ -38,7 +38,7 @@ for p in serial.tools.list_ports.comports():
                 print('ERROR: ', name, 'failed to open on path:', devPath)
 """
 
-s = serial.Serial('/dev/ttyACM1', baud)
+s = serial.Serial('/dev/ttyACM0', baud)
 if s and s.isOpen(): print('opened', s.name)
 else: print('error opening servos')
 UCs['servos'] = s
@@ -61,6 +61,7 @@ def sendChairCmd(cmd, val=0):
                 
 Inc = .01
 Servos = {}
+v = 1.1071487665176392
 
 class Servo:
     """
@@ -93,7 +94,7 @@ class Servo:
         
         #changed = self.pos != pos
         self.pos = pos
-        print(self.name, self.pos)
+        #print(self.name, self.pos)
         #if changed: self.arduinoWrite()
         self.arduinoWrite()
         
@@ -109,8 +110,13 @@ class Servo:
         return pos
 
     def arduinoWrite(self):
-        degrees = int(self.pos * 180/pi)
-        print(self.name, ': ', degrees, ' degrees in blender space', sep='')
+        
+        radians = self.pos
+        if self.name == 'shoulder.L': radians += pi/2 - v
+        if self.name == 'shoulder.R': radians += -(pi/2 - v)
+        
+        degrees = int(radians * 180/pi)
+        #print(self.name, ': ', degrees, ' degrees in blender space', sep='')
         
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
@@ -136,13 +142,13 @@ def incrementBone(name, inc):
 #right arm fully extended = 0
 
 #Left Arm
-Servo.new(0,    'shoulder.L',      'y',    pi/2,   0,      pi,      servoFlip=True)
+Servo.new(0,    'shoulder.L',      'y',    .4*pi,   0,      pi,      servoFlip=True)
 Servo.new(1,    'upperarm.L',      'x',    0,      0,      pi)#,     servoNegate=True)
 Servo.new(2,    'forearm.L',       'x',    0,      0,      pi,     servoFlip=True)
 Servo.new(3,    'hand.L',          'y',    0,      0,      pi)#,     servoFlip=True)
 
 #Right Arm
-Servo.new(4,    'shoulder.R',      'y',    -pi/2,  -pi,    0,      servoNegate=True)
+Servo.new(4,    'shoulder.R',      'y',    -.4*pi,  -pi,    0,      servoNegate=True)
 Servo.new(5,    'upperarm.R',      'x',    0,      -pi,    0,      servoFlip=True, servoNegate=True)
 Servo.new(6,    'forearm.R',       'x',    0,      0,      pi)
 Servo.new(7,    'hand.R',          'y',    0,      0,      pi)#,     servoFlip=True)
@@ -156,7 +162,7 @@ Servo.new(10,   'face',            'y',    0,      0,       pi)
 for name, servo in Servos.items(): servo.increment(0)
 
 def voyeur(cont):
-    print('----------voyeur------------')
+    #print('----------voyeur------------')
     ob = cont.owner
     
     for name, servo in Servos.items():
