@@ -38,7 +38,7 @@ for p in serial.tools.list_ports.comports():
                 print('ERROR: ', name, 'failed to open on path:', devPath)
 """
 
-s = serial.Serial('/dev/ttyACM5', baud)
+s = serial.Serial('/dev/ttyACM1', baud)
 if s and s.isOpen(): print('opened', s.name)
 else: print('error opening servos')
 UCs['servos'] = s
@@ -80,8 +80,8 @@ class Servo:
         self.servoNegate = servoNegate
         self.servoFlip = servoFlip
     
-    def new(id, name, initial, axis, min, max, servoNegate=False, servoFlip=False):
-        s = Servo(id, name, initial, axis, min, max, servoNegate, servoFlip)
+    def new(id, name, axis, initial, min, max, servoNegate=False, servoFlip=False):
+        s = Servo(id, name, axis, initial, min, max, servoNegate, servoFlip)
         Servos[name] = s
     
     def increment(self, inc, updateBlender=True):
@@ -91,10 +91,11 @@ class Servo:
         pos = min(pos, self.max)
         pos = max(pos, self.min)
         
-        changed = self.pos != pos
+        #changed = self.pos != pos
         self.pos = pos
-        
-        if changed: self.arduinoWrite()
+        print(self.name, self.pos)
+        #if changed: self.arduinoWrite()
+        self.arduinoWrite()
         
         if not updateBlender: return
         
@@ -109,7 +110,7 @@ class Servo:
 
     def arduinoWrite(self):
         degrees = int(self.pos * 180/pi)
-        #print(self.name, ':', degrees, ' degrees in blender space', sep='')
+        print(self.name, ': ', degrees, ' degrees in blender space', sep='')
         
         if self.servoNegate: degrees = -degrees
         if self.servoFlip: degrees = 180 - degrees
@@ -155,6 +156,7 @@ Servo.new(10,   'face',            'y',    0,      0,       pi)
 for name, servo in Servos.items(): servo.increment(0)
 
 def voyeur(cont):
+    print('----------voyeur------------')
     ob = cont.owner
     
     for name, servo in Servos.items():
