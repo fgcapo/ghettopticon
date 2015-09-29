@@ -1,5 +1,5 @@
 #include <ax12.h>
-#include <BioloidController.h>
+#include <BioloidController2.h>    // use the bug-fixed version 
 #include <SerialCommand.h>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -7,7 +7,6 @@
 
 SerialCommand CmdMgr;
 
-const int MAX_SERVOS = AX12_MAX_SERVOS;
 BioloidController Servos(1000000);
 
 // When a move is requestsudo udevadm trigger --action=changeed, the servos will move at different speeds in order to arrive
@@ -17,61 +16,46 @@ float gMaxSpeed = .5;  // "servo angle units" per ms
 /////////////////////////////////////////////////////////////////////////////////////////////
 // helpers
 
-// returns false if str contains any characters other than numbers
+// Converts string to double; returns true if successful.
+// Returns false if str contains any inappropriate characters, including whitespace.
+// See strtod for accepted number formats.
 boolean toDouble(const char *str, double *result) {
   char *end;
   if(*str == ' ') return false;
   *result = strtod(str, &end);
 
-  // if end == str, str begins with an erroneous character
+  // if end == str, str is empty or begins with an erroneous character
   // if end does not point at a null-terminator, the string contained errorneous characters
   return end != str && *end == '\0';
 }
 
-// returns false if str contains any characters other than numbers
+// Converts string to long; returns true if successful.
+// Returns false if str contains any characters other than numbers or a negative sign.
 boolean toLong(const char *str, long *result) {
   char *end;
-  if(*str == ' ') return false;
+  //if(*str == ' ') return false;
   *result = strtol(str, &end, 10);
   
-  // if end == str, str begins with an erroneous character
+  // if end == str, str is empty or begins with an erroneous character
   // if end does not point at a null-terminator, the string contained errorneous characters
   return end != str && *end == '\0';
 }
 
-// returns false if str contains any characters other than numbers
+// converts string to int; returns true if successful
+// Returns false if str contains any characters other than numbers or a negative sign.
 boolean toInt(const char *str, int *result) {
   char *end;
-  if(*str == ' ') return false;
+  //if(*str == ' ') return false;
   long r = strtol(str, &end, 10);
   
   // TODO check if out of int range
+  //if((unsigned long)r >> (8*sizeof(*result))) return false;
   *result = r;
   
-  // if end == str, str begins with an erroneous character
+  // if end == str, str is empty or begins with an erroneous character
   // if end does not point at a null-terminator, the string contained errorneous characters
   return end != str && *end == '\0';
 }
-
-/*
-// any whitespace encountered returns false
-boolean isNumeric(const char *s, boolean canBeNegative=false, boolean canHavePeriod=false) {
-  char c;
-  boolean seenPeriod = false;
-  
-  //accept an initial negative sign
-  if(canBeNegative && *s == '-') s++;
-  
-  while((c = *s++) != '\0') {
-    if(c >= '0' && c <= '9') ;
-    else if(canHavePeriod && !seenPeriod && c == '.') {
-      seenPeriod = true;
-    }
-    else return false;
-  }
-  
-  return true;
-}*/
 
 //////////////////////////////////////////////////////////////////////////////////
 // commands
@@ -80,7 +64,7 @@ void cmdUnrecognized(const char *cmd) {
 }
 
 // if no argument, prints the maximum speed
-// if an argument given, sets the maximum speed and then prints it
+// if one argument, sets the maximum speed and then prints it
 // TODO clarify what units are! (angle unit per ms)
 void cmdSetMaxSpeed() {
   if(char *arg = CmdMgr.next()) {
@@ -95,6 +79,10 @@ void cmdSetMaxSpeed() {
     gMaxSpeed = speed;
   }
   
+  if(CmdMgr.next()) {
+    Serial.println("Error: takes 1 argument");
+  }
+  
   Serial.print("speed ");
   Serial.println(gMaxSpeed);
 }
@@ -104,10 +92,11 @@ void cmdSetMaxSpeed() {
 //angle is 0 to 1024?
 void cmdSetServoPosition() {
   const char *FormatErrorMsg = "Error: takes pairs in the form <ID>:<angle>";
+
+  struct Tuple { int id, angle; };
   
-  const int maxAngles = MAX_SERVOS;
-  int angles[maxAngles];	// array indexed by ID
-  memset(angles, -1, maxAngles*sizeof(*angles));
+  const int maxAngles = Servos.poseSize;
+  Tuple angles[maxAngles];
   int count = 0;
   
   while(char *arg = CmdMgr.next()) {
@@ -134,7 +123,8 @@ void cmdSetServoPosition() {
       return;
     }
     
-    angles[id] = angle;
+    angles[count].id = id;
+    angles[count].angle = angle;
     count++;
   }
   
@@ -144,21 +134,22 @@ void cmdSetServoPosition() {
   }
 
   float msLargestTimeToMove = 0;
-  for(int i = 0; i < maxAngles; i++) {
-    if(angles[i] == -1) continue;
+  for(int i = 0; i < count; i++) {
+    int id = angles[i].id;
+    int newAngle = angles[i].angle;
+    int curAngle = Servos.getCurPose(id);
     
-    int curAngle = Servos.getCurPose(i);
-    float time = abs(curAngle - angles[i]) / gMaxSpeed;
+    float time = abs(curAngle - newAngle) / gMaxSpeed;
     msLargestTimeToMove = max(msLargestTimeToMove, time);
     
     /*Serial.print("moving id ");
-    Serial.print(i);
+    Serial.print(id);
     Serial.print(" from ");
     Serial.print(curAngle);
     Serial.print(" to ");
-    Serial.println(angles[i]);*/
+    Serial.println(newAngle);*/
 
-    Servos.setNextPose(i, angles[i]);
+    Servos.setNextPose(id, newAngle);
   }
   
   Serial.print("Longest movement will take ");
@@ -169,27 +160,19 @@ void cmdSetServoPosition() {
 }
 
 void readServoPositions() {
+  char buf[16];
   for(int i = 0; i < Servos.poseSize; i++) {
     int id = Servos.getId(i);
+    sprintf(buf, "%2d", id);
     Serial.print("ID: ");
-    Serial.print(id);
+    Serial.print(buf);
     Serial.print(" pos: ");
     Serial.println(Servos.getCurPose(id));
   }
 }
 
-void setup() {
-  Servos.setup(4);
-  Servos.readPose();
+void readVoltage() {
   float voltage = (ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0; 
-
-  CmdMgr.setDefaultHandler(   cmdUnrecognized);
-  CmdMgr.addCommand("s",      cmdSetServoPosition);
-  CmdMgr.addCommand("r",      readServoPositions);
-  CmdMgr.addCommand("speed",  cmdSetMaxSpeed);
-  
-  Serial.begin(9600);
-  
   if(voltage < 0) {
     Serial.println("Dynamixel error: system reported voltage error. May be servos with duplicate IDs.");
   }
@@ -198,7 +181,32 @@ void setup() {
     Serial.print(voltage);
     Serial.println("V");
   }
+}
 
+void setup() {
+  Servos.setup(32);
+  
+  // read in the position of each servo
+  Servos.readPose();
+  
+  // Safe guard: the move interpolation code moves all servos, so if a servo starts
+  // off-center, and we move another servo, the first servo will move to center (the default "next" position).
+  // So set the target position of each servo to its current position
+  for(int i = 0; i < Servos.poseSize; i++) {
+    int id = Servos.getId(i);
+    Servos.setNextPose(id, Servos.getCurPose(id));
+  }
+
+  CmdMgr.setDefaultHandler(   cmdUnrecognized);
+  CmdMgr.addCommand("v",      readVoltage);
+  CmdMgr.addCommand("r",      readServoPositions);
+  CmdMgr.addCommand("s",      cmdSetServoPosition);
+  CmdMgr.addCommand("speed",  cmdSetMaxSpeed);
+  
+  Serial.begin(9600);
+  
+  delay(1000);
+  readVoltage();
   readServoPositions();
 }
 

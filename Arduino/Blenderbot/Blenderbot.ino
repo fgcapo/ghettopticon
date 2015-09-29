@@ -74,7 +74,7 @@ void setup()  {
   pinMode(lBLI, OUTPUT); 
   // Lets start the serial
   Serial.begin(9600);
-  Serial.println(" Welcome To the blenderbot controls"); 
+  //Serial.println(" Welcome To the blenderbot controls"); 
 } 
 
 const int HEART_BEAT_TIMEOUT = 100;  //milliseconds
