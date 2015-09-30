@@ -11,12 +11,30 @@ import struct
 def keypressed(key):
     return bge.logic.keyboard.events[key] == bge.logic.KX_INPUT_JUST_ACTIVATED
 
+def openSerial(path, baud=38400):
+    uc = None
+    try:
+        uc = serial.Serial(path, baud)
+    except:
+        pass
+
+    if uc and uc.isOpen():
+        print('opened', uc.name)
+        uc.write(b'plevel silent\n')
+    else:
+        print('Error:', path, 'not opened')
+
+    return uc    
+
 ########################################################################
 import ola
 from ola.ClientWrapper import ClientWrapper
 
-# OLA can't individually address DMX channels, so only do a send
-# if a channel value changes
+# Holds an array of 512 DMX channels.
+# Channels go from 0-511 and have value 0-255.
+# OLA can't individually address DMX channels, so this class only
+# invokes the DMX subsystem if there has been a change
+# To use, call set() on individual channels and then call send().
 class DmxChannels:
     def __init__(self):
         self.data = bytearray(512)
@@ -31,45 +49,50 @@ class DmxChannels:
     def len():
         return len(self.data);
     
+    # sends to OLA if there has been a change    
     def send(self):
         if not self.client or not self.dataChanged: return
         self.dataChanged = False
         self.client.SendDmx(1, self.data)
         
-    # you must call send to tramist the changes
-    def set(self, index, value):
-        #print('DMX.set', index, value)
-        if self.data[index] != value:
-            self.data[index] = value
-            self.dataChanged = True
-
-    def setFromStart(*values):
-        i = 0
+    # pass a start channel and any number of channel values
+    # values are integers 0-255
+    # you must call send to transmit the changes
+    def set(self, channel, *values):
+        #print('DMX.set channel', index, '=', values)
         for v in values:
-            self.set(i, v)
-            i += 1
-        self.send()
+            if self.data[channel] != v:
+                self.data[channel] = v
+                self.dataChanged = True
+                channel += 1
+                
+    # pass a start channel and any number of channel values
+    # values are numbers between 0 and 1
+    # you must call send to transmit the changes
+    def setFraction(self, channel, *values):
+        intValues = tuple(int(255*v) for v in values)
+        self.set(channel, *intValues)
 
+    # sets all channels to 0 and transmits
     def off(self):
         for i in range(len(self.data)):
             self.data[i] = 0
         self.dataChanged = True
         self.send()
 
+    # convenience to set and transmit a list of values starting at channel 0
+    def setAndSend(*values):
+        i = 0
+        for v in values:
+            self.set(i, v)
+            i += 1
+        self.send()
+
 DMX = DmxChannels()
 
 ########################################################################
 # LED controller
-ucLEDs = None
-try:
-    ucLEDs = serial.Serial('/dev/led', 9600)
-except:
-    pass
-
-if ucLEDs and ucLEDs.isOpen():
-    print('opened ', ucLEDs.name)
-else:
-    print("Error: ucLEDs not opened")
+ucLEDs = openSerial('/dev/led')
 
 # arguments are PWM values 0-255
 def setLEDs(*values):
@@ -82,19 +105,15 @@ def setLEDs(*values):
     cmd += '\n'
     #print(cmd)
     ucLEDs.write(str.encode(cmd))
+
+def setOneLEDInvFrac(intensity):
+    # board takes intensity inverted
+    chan1 = int(255 * (1.0 - intensity))
+    setLEDs(chan1, 0, 0, 0, 0, 0)
     
 ########################################################################
 # dynamixel servos
-ucServos = None
-try:
-    ucServos = serial.Serial('/dev/arbotix', 9600)
-except:
-    pass
-
-if ucServos and ucServos.isOpen():
-    print('opened ', ucServos.name)
-else:
-    print("Error: ucServos not opened")
+ucServos = openSerial('/dev/arbotix')
 
 # argument is a dictionary of id:angle
 # angles are 0-1023; center is 512; safe angle range is 200-824
@@ -111,20 +130,34 @@ def setServoPos(anglesDict):
 
 #########################################################################
 def monitorScene():
-    for o in bpy.data.objects:
+    scene = bge.logic.getCurrentScene()
+
+    for o in scene.lights:
         if o.name.startswith('Spot'):
-            rgb = o.data.color
-            DMX.set(0, int(255*o.data.energy))
-            DMX.set(1, int(255*rgb[0]))
-            DMX.set(2, int(255*rgb[1]))
-            DMX.set(3, int(255*rgb[2]))
-            #DMX.set(4, 255) #white light
-            #DMX.set(0, 255)
+            #grab starting channel number from name
+            channel = int(o.name[4:])
+            intensity = o.energy
+            rgb = o.color
+
+            DMX.setFraction(channel, intensity, *rgb)#, 255)
             DMX.send()
-        elif o.name.startswith('Servo'):
+            setOneLEDInvFrac(intensity)
+            
+        """elif o.name.startswith('LED'):
+            channel = int(o.name[3:])
+            intensity = o.energy
+            setOneLEDInvFrac(channel, intensity)"""
+
+            
+    for o in scene.objects:
+        if o.name.startswith('Servo'):
             pass
 
 def k(cont):
+    #ob = cont.owner
+    #setOneLEDInvFrac(ob.energy)
+    #d = bge.logic.getCurrentScene().lights
+    #for i in d: print(i.energy)
     if keypressed(bge.events.ZKEY):
         DMX.off()
         bge.logic.endGame()
@@ -132,18 +165,18 @@ def k(cont):
 
     if keypressed(bge.events.QKEY): 
         setServoPos({3:512, 4:512})
-        setLEDs(0, 0, 0, 0)
-        DMX.off()
+        bge.logic.getCurrentScene().lights['Spot0'].energy = 0.0
+        bge.logic.getCurrentScene().lights['Spot0'].color = [0, 0, 0]
     if keypressed(bge.events.WKEY):
         setServoPos({3:400, 4:400})
-        setLEDs(100, 100, 100, 100)
-        DMX.setAndSend(255, 0, 255, 0, 0)
+        bge.logic.getCurrentScene().lights['Spot0'].energy = 0.5
+        bge.logic.getCurrentScene().lights['Spot0'].color = [0, 1.0, 0]
     if keypressed(bge.events.EKEY):
         setServoPos({3:300, 4:300})
-        setLEDs(255, 255, 255, 255)
-        DMX.setAndSend(255, 0, 0, 255, 0)
+        bge.logic.getCurrentScene().lights['Spot0'].energy = 1.0
+        bge.logic.getCurrentScene().lights['Spot0'].color = [0, 0, 1.0]
         
-    #monitorScene()
+    monitorScene()
     
 # mouse tracking subroutine for interactive wheelchair movement
 # This routine maps mouse position to wheelchair velocity, which was the simplest way I could think of

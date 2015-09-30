@@ -1,6 +1,7 @@
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
 #include <SerialCommand.h>
+#include <PrintLevel.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 // globals
@@ -60,7 +61,7 @@ boolean toInt(const char *str, int *result) {
 //////////////////////////////////////////////////////////////////////////////////
 // commands
 void cmdUnrecognized(const char *cmd) {
-  Serial.println("unrecognized command");
+  printlnError("unrecognized command");
 }
 
 // if no argument, prints the maximum speed
@@ -68,11 +69,11 @@ void cmdUnrecognized(const char *cmd) {
 // TODO clarify what units are! (angle unit per ms)
 void cmdSetMaxSpeed() {
   if(char *arg = CmdMgr.next()) {
-    //Serial.println("Error: takes one argument <speed in units per ms>");
+    //printlnError("Error: takes one argument <speed in units per ms>");
   
     double speed;
     if(!toDouble(arg, &speed) || speed <= 0 || speed > 10) {
-      Serial.println("Error: maxSpeed must be a number less than 10");
+      printlnError("Error: maxSpeed must be a number less than 10");
       return;
     }
     
@@ -80,11 +81,11 @@ void cmdSetMaxSpeed() {
   }
   
   if(CmdMgr.next()) {
-    Serial.println("Error: takes 1 argument");
+    printlnError("Error: takes 1 argument");
   }
   
-  Serial.print("speed ");
-  Serial.println(gMaxSpeed);
+  printAck("speed ");
+  printlnAck(gMaxSpeed);
 }
 
 //servo serial command format:
@@ -104,22 +105,22 @@ void cmdSetServoPosition() {
 
     char *sID = strtok(arg, ":");
     if(sID == NULL) {
-      Serial.println(FormatErrorMsg);
+      printlnError(FormatErrorMsg);
       return;
     }
     if(!toInt(sID, &id) || id < 1 || id > 127) {
-      Serial.println("Error: ID must be between 1 and 127");
+      printlnError("Error: ID must be between 1 and 127");
       return;
     }
 
     char *sAngle = strtok(NULL, ":");
     if(sAngle == NULL) {
-      Serial.println(FormatErrorMsg);
+      printlnError(FormatErrorMsg);
       return;
     }
     //contrain from -90 to 90 degrees
     if(!toInt(sAngle, &angle) || angle < 200 || angle > 824) {
-      Serial.println("Error: angle must be between 200 and 824");
+      printlnError("Error: angle must be between 200 and 824");
       return;
     }
     
@@ -129,7 +130,7 @@ void cmdSetServoPosition() {
   }
   
   if(count == 0) {
-    Serial.println("Error: no arguments");
+    printlnError("Error: no arguments");
     return;
   }
 
@@ -142,19 +143,19 @@ void cmdSetServoPosition() {
     float time = abs(curAngle - newAngle) / gMaxSpeed;
     msLargestTimeToMove = max(msLargestTimeToMove, time);
     
-    /*Serial.print("moving id ");
-    Serial.print(id);
-    Serial.print(" from ");
-    Serial.print(curAngle);
-    Serial.print(" to ");
-    Serial.println(newAngle);*/
+    printInfo("moving id ");
+    printInfo(id);
+    printInfo(" from ");
+    printInfo(curAngle);
+    printInfo(" to ");
+    printlnInfo(newAngle);
 
     Servos.setNextPose(id, newAngle);
   }
   
-  Serial.print("Longest movement will take ");
-  Serial.print(msLargestTimeToMove);
-  Serial.println(" ms");
+  printAck("Longest movement will take ");
+  printAck(msLargestTimeToMove);
+  printlnAck(" ms");
   
   Servos.interpolateSetup(round(msLargestTimeToMove));
 }
@@ -164,23 +165,40 @@ void readServoPositions() {
   for(int i = 0; i < Servos.poseSize; i++) {
     int id = Servos.getId(i);
     sprintf(buf, "%2d", id);
-    Serial.print("ID: ");
-    Serial.print(buf);
-    Serial.print(" pos: ");
-    Serial.println(Servos.getCurPose(id));
+    printAck("ID: ");
+    printAck(buf);
+    printAck(" pos: ");
+    printlnAck(Servos.getCurPose(id));
   }
 }
 
 void readVoltage() {
   float voltage = (ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0; 
   if(voltage < 0) {
-    Serial.println("Dynamixel error: system reported voltage error. May be servos with duplicate IDs.");
+    printlnError("Dynamixel error: system reported voltage error. May be servos with duplicate IDs.");
   }
   else {
-    Serial.print("Dynamixel ready. System voltage: ");
-    Serial.print(voltage);
-    Serial.println("V");
+    printError("Dynamixel ready. System voltage: ");
+    printError(voltage);
+    printlnError("V");
   }
+}
+  
+void cmdSetPrintLevel() {  
+  if(char *arg = CmdMgr.next()) {
+    if(CmdMgr.next()) {
+      printlnAlways("Error: takes 0 or 1 arguments");
+      return;
+    }
+    
+    if(!PrintLevel::set(arg)) {
+      PrintLevel::printErrorString();
+      return;
+    }
+  }
+  
+  printAlways("print level ");
+  printlnAlways(PrintLevel::toString());
 }
 
 void setup() {
@@ -198,10 +216,11 @@ void setup() {
   }
 
   CmdMgr.setDefaultHandler(   cmdUnrecognized);
+  CmdMgr.addCommand("plevel", cmdSetPrintLevel);
+  CmdMgr.addCommand("speed",  cmdSetMaxSpeed);
+  CmdMgr.addCommand("s",      cmdSetServoPosition);
   CmdMgr.addCommand("v",      readVoltage);
   CmdMgr.addCommand("r",      readServoPositions);
-  CmdMgr.addCommand("s",      cmdSetServoPosition);
-  CmdMgr.addCommand("speed",  cmdSetMaxSpeed);
   
   Serial.begin(9600);
   
