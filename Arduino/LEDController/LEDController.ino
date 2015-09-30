@@ -1,11 +1,18 @@
 // Arduino sketch which outputs PWM for a set of channels based on serial input.
 // Serial commands accepted:
 // - leds <int1> <int2> <int3> <int4> <int5> <int6>, where <intN> is 0-255
-#include <SerialCommand.h>
+
+#include <SC.h>
 #include <PrintLevel.h>
 
 
-SerialCommand CmdMgr;
+SerialCommand::Entry CommandsList[] = {
+  {"plevel", cmdSetPrintLevel},
+  {"leds",   cmdSetLEDs},
+  {NULL,     NULL}
+};
+
+SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 const char Channels[] = {3, 5, 6, 9, 10, 11};  // Arduino Uno PWM pinss
 const int NumChannels = sizeof(Channels)/sizeof(*Channels);
 
@@ -65,9 +72,9 @@ void cmdSetPrintLevel() {
 }
 
 void setup() {
-  CmdMgr.setDefaultHandler(   cmdUnrecognized);
-  CmdMgr.addCommand("plevel", cmdSetPrintLevel);
-  CmdMgr.addCommand("leds",   cmdSetLEDs);
+  //CmdMgr.setDefaultHandler(   cmdUnrecognized);
+  //CmdMgr.addCommand("plevel", cmdSetPrintLevel);
+  //CmdMgr.addCommand("leds",   cmdSetLEDs);
   
   Serial.begin(38400);
   printlnAlways("LED controller");

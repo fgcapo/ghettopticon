@@ -1,12 +1,20 @@
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
-#include <SerialCommand.h>
 #include <PrintLevel.h>
+#include <SC.h>
 
 /////////////////////////////////////////////////////////////////////////////////
 // globals
 
-SerialCommand CmdMgr;
+SerialCommand::Entry CommandsList[] = {
+  {"plevel", cmdSetPrintLevel},
+  {"speed",  cmdSetMaxSpeed},
+  {"s",      cmdSetServoPosition},
+  {"v",      readVoltage},
+  {"r",      readServoPositions}
+};
+
+SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 
 BioloidController Servos(1000000);
 
@@ -214,17 +222,8 @@ void setup() {
     int id = Servos.getId(i);
     Servos.setNextPose(id, Servos.getCurPose(id));
   }
-
-  CmdMgr.setDefaultHandler(   cmdUnrecognized);
-  CmdMgr.addCommand("plevel", cmdSetPrintLevel);
-  CmdMgr.addCommand("speed",  cmdSetMaxSpeed);
-  CmdMgr.addCommand("s",      cmdSetServoPosition);
-  CmdMgr.addCommand("v",      readVoltage);
-  CmdMgr.addCommand("r",      readServoPositions);
   
   Serial.begin(9600);
-  
-  delay(1000);
   readVoltage();
   readServoPositions();
 }
