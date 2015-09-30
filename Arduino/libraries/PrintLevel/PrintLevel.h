@@ -8,7 +8,7 @@ namespace PrintLevel {
 		else return gStrings[ALL_INFO];
 	}
 
-	const char *toString() { toString(gPrintLevel); }
+	const char *toString() { return toString(gPrintLevel); }
 
 	bool set(const char *str) {
 	  PrintLevel mode;

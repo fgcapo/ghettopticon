@@ -89,7 +89,7 @@ void cmdSetMaxSpeed() {
   }
   
   if(CmdMgr.next()) {
-    printlnError("Error: takes 1 argument");
+    printlnError("Error: takes 0 or 1 arguments");
   }
   
   printAck("speed ");

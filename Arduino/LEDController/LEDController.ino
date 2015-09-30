@@ -1,53 +1,54 @@
 // Arduino sketch which outputs PWM for a set of channels based on serial input.
 // Serial commands accepted:
-// - leds <int1> <int2> <int3> <int4> <int5> <int6>, where <intN> is 0-255
+// - pwm <int1> <int2> <int3> ..., where <intN> is 0-255 and N is up to NumChannels
 
 #include <SC.h>
 #include <PrintLevel.h>
 
-
 SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
-  {"leds",   cmdSetLEDs},
+  {"pwm",    cmdPWMPins},
   {NULL,     NULL}
 };
 
 SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
-const char Channels[] = {3, 5, 6, 9, 10, 11};  // Arduino Uno PWM pinss
+const char Channels[] = {3, 5, 6, 9, 10, 11};  // Arduino Uno PWM pins
 const int NumChannels = sizeof(Channels)/sizeof(*Channels);
 
-const char *SetLEDUsageMsg = "Error: takes 6 arguments between 0 and 255";
+const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 255";
 
 
 void cmdUnrecognized(const char *cmd) {
   printlnError("unrecognized command");
 }
 
-// expects 4 space-delimited ints 0-255
-void cmdSetLEDs() {
+// expects up to 6 space-delimited ints 0-255
+void cmdPWMPins() {
   int channelValues[NumChannels];
   int count = 0;
   
   while(char *arg = CmdMgr.next()) {
     if(count >= NumChannels) {
-      printlnError(SetLEDUsageMsg);
+      printlnError(SetPWMUsageMsg);
       return;
     }
   
     char *end;
-    channelValues[count++] = strtol(arg, &end, 10);
-    if (*end != '\0') {
-      printlnError(SetLEDUsageMsg);
+    long v = strtol(arg, &end, 10);
+    if (*end != '\0' || v < 0 || v > 255) {
+      printlnError(SetPWMUsageMsg);
       return;
     }
+    
+    channelValues[count++] = v;
   }
   
-  if(count != NumChannels) {
-    printlnError(SetLEDUsageMsg);
+  if(count == 0) {
+    printlnError("Error: no arguments");
     return;
   }
   
-  for(int i = 0; i < NumChannels; i++) {
+  for(int i = 0; i < count; i++) {
     analogWrite(Channels[i], channelValues[i]);
   }
   
@@ -72,16 +73,17 @@ void cmdSetPrintLevel() {
 }
 
 void setup() {
-  //CmdMgr.setDefaultHandler(   cmdUnrecognized);
-  //CmdMgr.addCommand("plevel", cmdSetPrintLevel);
-  //CmdMgr.addCommand("leds",   cmdSetLEDs);
-  
   Serial.begin(38400);
-  printlnAlways("LED controller");
-
+  printAlways("PWM controller. PWM pins are expected to be ");
+  
   for(int i = 0; i < NumChannels; i++) {
     pinMode(Channels[i], OUTPUT);
+
+    if(i != 0) printAlways(", ");
+    printAlways((int)Channels[i]);
   }
+  
+  printAlways(".\n");
 
   // fiddle with PWM frequency
   //TCCR2B = _BV(CS00);
