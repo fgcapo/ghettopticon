@@ -5,14 +5,32 @@
 #include <SC.h>
 #include <PrintLevel.h>
 
+void r() {
+  for(int i = 0; i < 3; i++) {
+    int id = i;
+    int pos = i*2;
+    
+    // print key:value pairs space delimited, but column-aligned
+    char buf[32];
+    int ixEnd = sprintf(buf, "ID:%d", id);
+    while(ixEnd < 5) buf[ixEnd++] = ' ';
+    buf[ixEnd] = '\0';
+
+    printAck(buf);
+    printAck(" pos:");
+    printlnAck(pos);
+  }
+}
+
 SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
   {"pwm",    cmdPWMPins},
+  {"r",      r},
   {NULL,     NULL}
 };
 
 SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
-const char Channels[] = {3, 5, 6, 9, 10, 11};  // Arduino Uno PWM pins
+const int Channels[] = {3, 5, 6, 9, 10, 11};  // Arduino Uno PWM pins
 const int NumChannels = sizeof(Channels)/sizeof(*Channels);
 
 const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 255";
@@ -40,6 +58,10 @@ void cmdPWMPins() {
       return;
     }
     
+    printInfo("Setting pin ");
+    printInfo(Channels[count]);
+    printInfo(" to ");
+    printlnInfo(v);
     channelValues[count++] = v;
   }
   
@@ -52,7 +74,9 @@ void cmdPWMPins() {
     analogWrite(Channels[i], channelValues[i]);
   }
   
-  printlnAck("OK");
+  printAck("OK set ");
+  printAck(count);
+  printlnAck(" pins");
 }
 
 void cmdSetPrintLevel() {  
@@ -68,8 +92,8 @@ void cmdSetPrintLevel() {
     }
   }
   
-  printAlways("print level ");
-  printlnAlways(PrintLevel::toString());
+  printAck("print level ");
+  printlnAck(PrintLevel::toString());
 }
 
 void setup() {
@@ -78,9 +102,12 @@ void setup() {
   
   for(int i = 0; i < NumChannels; i++) {
     pinMode(Channels[i], OUTPUT);
+    
+    // high = off, so start high
+    analogWrite(Channels[i], 255);
 
     if(i != 0) printAlways(", ");
-    printAlways((int)Channels[i]);
+    printAlways(Channels[i]);
   }
   
   printAlways(".\n");

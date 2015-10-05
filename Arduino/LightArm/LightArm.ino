@@ -9,18 +9,26 @@
 SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
   {"speed",  cmdSetMaxSpeed},
-  {"s",      cmdSetServoPosition},
   {"v",      readVoltage},
-  {"r",      readServoPositions}
+  {"r",      readServoPositions},
+  {"s",      cmdSetServoPosition},
+  {"B",      cmdSetServoPositionBinary},
+  {"relax",  cmdRelax},
+  {NULL,     NULL}
 };
 
 SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 
+const int NumServos = 32;
 BioloidController Servos(1000000);
 
-// When a move is requestsudo udevadm trigger --action=changeed, the servos will move at different speeds in order to arrive
-// at the target position simultaneously. No servo will move faster than this speed.
-float gMaxSpeed = .5;  // "servo angle units" per ms
+// When a move is requested, the servos will move at different speeds in order to arrive
+// at the target position simultaneously. But movement time will be constrained so that
+// no servo will move faster than this maximum speed, constrained to [1-1000].
+// Speed is inverted to simplify calculation.
+int gMaxSpeedInv = 2;  // max servo movement speed inverted, in ms per angle-unit
+
+bool relaxed = false;
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // helpers
@@ -72,33 +80,80 @@ void cmdUnrecognized(const char *cmd) {
   printlnError("unrecognized command");
 }
 
+void readVoltage() {
+  float voltage = (ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0; 
+  if(voltage < 0) {
+    printlnError("Dynamixel error: system reported voltage error. May be servos with duplicate IDs.");
+  }
+  else {
+    printError("Dynamixel ready. System voltage: ");
+    printError(voltage);
+    printlnError("V");
+  }
+}
+
+
+void cmdRelax() {
+  relaxed = true;
+  for(int i = 0; i < NumServos; i++) {
+    Relax(Servos.getId(i));
+  }
+}
+
 // if no argument, prints the maximum speed
 // if one argument, sets the maximum speed and then prints it
-// TODO clarify what units are! (angle unit per ms)
+// Units to the user are angle-units per second, valid range [1-1000]
+// Internally the speed is kept in ms per angle-unit, valid range [1000-1]
 void cmdSetMaxSpeed() {
   if(char *arg = CmdMgr.next()) {
-    //printlnError("Error: takes one argument <speed in units per ms>");
-  
+    if(CmdMgr.next()) {
+      printlnError("Error: takes 0 or 1 arguments");
+      return;
+    }
+
     double speed;
-    if(!toDouble(arg, &speed) || speed <= 0 || speed > 10) {
-      printlnError("Error: maxSpeed must be a number less than 10");
+    if(!toDouble(arg, &speed) || speed < 1 || speed > 1000) {
+      printlnError("Error: speed is in angle-units per second; between 1 and 1000");
       return;
     }
     
-    gMaxSpeed = speed;
+    gMaxSpeedInv = (int)(1000.0 / speed);  // convert to ms per angle-unit
   }
   
-  if(CmdMgr.next()) {
-    printlnError("Error: takes 0 or 1 arguments");
-  }
+  printAck("max speed in angle-units per second: ");
+  printlnAck(1000.0 / gMaxSpeedInv);  // convert to angle-units per second
+}
+
+void readServoPositions() {
+  printAck("Servo Readings:");
+  printlnAck(NumServos);
   
-  printAck("speed ");
-  printlnAck(gMaxSpeed);
+  Servos.readPose();
+
+  for(int i = 0; i < Servos.poseSize; i++) {
+    int id = Servos.getId(i);
+    int pos = Servos.getCurPose(id);
+    //int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
+    //Serial.print(pos);
+    
+    if(pos > 2000) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
+    
+    // print key:value pairs space delimited, but column-aligned
+    char buf[32];
+    int ixEnd = sprintf(buf, "ID:%d", id);
+    while(ixEnd < 5) buf[ixEnd++] = ' ';
+    buf[ixEnd] = '\0';
+
+    printAck(buf);
+    printAck(" pos:");
+    printlnAck(pos);
+  }
 }
 
 //servo serial command format:
 //"s <id>:<angle> <id>:<angle> ... \n"
-//angle is 0 to 1024?
+//angle is 0 to 1024? or 1 to 1023?
+// We shall constrain the angle to 200 to 824, and assume and consider 0 a no-op.
 void cmdSetServoPosition() {
   const char *FormatErrorMsg = "Error: takes pairs in the form <ID>:<angle>";
 
@@ -141,14 +196,21 @@ void cmdSetServoPosition() {
     printlnError("Error: no arguments");
     return;
   }
+  
+  if(relaxed) {
+    relaxed = false;
+    Servos.readPose();
+  }
 
-  float msLargestTimeToMove = 0;
+  long msLargestTimeToMove = 0;
   for(int i = 0; i < count; i++) {
     int id = angles[i].id;
     int newAngle = angles[i].angle;
     int curAngle = Servos.getCurPose(id);
     
-    float time = abs(curAngle - newAngle) / gMaxSpeed;
+    if(curAngle < 1 || curAngle > 2000) continue;
+    
+    long time = abs(curAngle - newAngle) * gMaxSpeedInv;
     msLargestTimeToMove = max(msLargestTimeToMove, time);
     
     printInfo("moving id ");
@@ -168,30 +230,73 @@ void cmdSetServoPosition() {
   Servos.interpolateSetup(round(msLargestTimeToMove));
 }
 
-void readServoPositions() {
-  char buf[16];
-  for(int i = 0; i < Servos.poseSize; i++) {
-    int id = Servos.getId(i);
-    sprintf(buf, "%2d", id);
-    printAck("ID: ");
-    printAck(buf);
-    printAck(" pos: ");
-    printlnAck(Servos.getCurPose(id));
+void setServoPositionBinary(char *buffer, int len) {
+  int numAngles = min(len/2, NumServos);
+  long msLargestTimeToMove = 0;
+  
+  if(relaxed) {
+    relaxed = false;
+    Servos.readPose();
   }
+  
+  for(int i = 0; i < numAngles; i++) {
+    // little endian
+    int newAngle = (unsigned char)buffer[2*i];
+    newAngle    += (int)((unsigned)buffer[2*i+1]) << 8;
+    
+    // 0 is no-op; acceptable range is [200, 824]
+    if(newAngle == 0) continue;
+    if(newAngle < 200 || newAngle > 824) {
+      printError("Angle out of range: ");
+      printlnError(newAngle);
+      continue;
+    }
+    
+    int id = Servos.getId(i);
+    int curAngle = Servos.getCurPose(id);
+    if(curAngle < 1 || curAngle > 2000) continue;
+    
+    long time = abs(curAngle - newAngle) * gMaxSpeedInv;
+    msLargestTimeToMove = max(msLargestTimeToMove, time);
+    
+    printInfo("moving id ");
+    printInfo(id);
+    printInfo(" from ");
+    printInfo(curAngle);
+    printInfo(" to ");
+    printlnInfo(newAngle);
+
+    Servos.setNextPose(id, newAngle);
+  }
+  
+  printAck("Longest movement will take ");
+  printAck(msLargestTimeToMove);
+  printlnAck(" ms");
+  
+  Servos.interpolateSetup(round(msLargestTimeToMove));
 }
 
-void readVoltage() {
-  float voltage = (ax12GetRegister (1, AX_PRESENT_VOLTAGE, 1)) / 10.0; 
-  if(voltage < 0) {
-    printlnError("Dynamixel error: system reported voltage error. May be servos with duplicate IDs.");
+// argument is number of angles to be transmitted
+void cmdSetServoPositionBinary() {
+  int numAngles = NumServos;
+
+  if(char *arg = CmdMgr.next()) {
+    int n;
+    if(!toInt(arg, &n) || n < 1 || n > 127) {
+      printAlways("Error: argument is number of servo angles to be sent, should be in [1, 127]. Assuming ");
+      printlnAlways(NumServos);
+    }
+    else {
+      numAngles = n;
+    }
   }
-  else {
-    printError("Dynamixel ready. System voltage: ");
-    printError(voltage);
-    printlnError("V");
-  }
-}
   
+  printAck("Expecting ");
+  printAck(numAngles*2);
+  printlnAck(" bytes");
+  CmdMgr.enterBinaryMode(numAngles*2, setServoPositionBinary);
+}
+
 void cmdSetPrintLevel() {  
   if(char *arg = CmdMgr.next()) {
     if(CmdMgr.next()) {
@@ -205,12 +310,12 @@ void cmdSetPrintLevel() {
     }
   }
   
-  printAlways("print level ");
-  printlnAlways(PrintLevel::toString());
+  printAck("print level ");
+  printlnAck(PrintLevel::toString());
 }
 
 void setup() {
-  Servos.setup(32);
+  Servos.setup(NumServos);
   
   // read in the position of each servo
   Servos.readPose();
@@ -223,14 +328,14 @@ void setup() {
     Servos.setNextPose(id, Servos.getCurPose(id));
   }
   
-  Serial.begin(9600);
+  Serial.begin(38400);
   readVoltage();
   readServoPositions();
 }
 
 void loop() {
-  CmdMgr.readSerial();
   if(Servos.interpolating) Servos.interpolateStep();
+  CmdMgr.readSerial();
 }
 
 

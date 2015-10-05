@@ -31,6 +31,7 @@ SerialCommand::SerialCommand(const Entry *commandList, DefaultHandler defaultHan
     defaultHandler(defaultHandler),
     term(terminator),           // default terminator for commands, newline character
     delim(delimiters),
+    numBinaryBytes(0),
     last(NULL)
 {
   //strcpy(delim, " "); // strtok_r needs a null-terminated string
@@ -77,7 +78,21 @@ void SerialCommand::readSerial() {
       Serial.print(inChar);   // Echo back to serial stream
     #endif
 
-    if (inChar == term) {     // Check for the terminator (default '\r') meaning end of command
+    // binary mode
+    if (numBinaryBytes) {
+      if (bufPos >= COMMAND_BUFFER_LENGTH) return;
+
+      buffer[bufPos++] = inChar;  // Put character into buffer
+      if (bufPos >= numBinaryBytes) {
+        binaryDone(buffer, bufPos);  // call the handler
+        numBinaryBytes = 0;          // clear binary mode
+        clearBuffer();
+      }
+      return;
+    }
+
+    // text mode
+    if (inChar == term) {     // Check for the terminator meaning end of command
       #ifdef SERIALCOMMAND_DEBUG
         Serial.print("Received: ");
         Serial.println(buffer);
@@ -125,6 +140,12 @@ void SerialCommand::readSerial() {
       }
     }
   }
+}
+
+void SerialCommand::enterBinaryMode(int numBytes, void (*function)(char*, int)) {
+  numBinaryBytes = min(sizeof(buffer), numBytes);
+  binaryDone = function;
+  clearBuffer();
 }
 
 /*

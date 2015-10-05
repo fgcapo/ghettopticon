@@ -40,8 +40,8 @@
 // array of name-command pairs must end with {NULL, NULL}
 
 // Size of the input buffer in bytes (maximum length of one command plus arguments)
-//template<int COMMAND_BUFFER_LENGTH=255>
 #define COMMAND_BUFFER_LENGTH 255
+//template<int COMMAND_BUFFER_LENGTH=255>
 class SerialCommand {
   public:
     // data structure to hold Command/Handler function key-value pairs
@@ -64,9 +64,10 @@ class SerialCommand {
     void clearBuffer();   // Clears the input buffer.
     char *next();         // Returns pointer to next token found in command buffer (for getting arguments to commands).
 
+    // Call this begin receiving binary data.  Callback will be called when done.
+    void enterBinaryMode(int numBytes, void (*callback)(char *buf, int len));
 
   private:
-    
     // Command/handler array of {name, function} pairs
     // Array must end with {NULL, NULL}                             
     const Entry *commandList;
@@ -76,9 +77,12 @@ class SerialCommand {
     const char *delim; // null-terminated list of delimiter characters for tokenizing (default " ")
     char term;         // character that signals end of command (default '\n')
 
-    char buffer[COMMAND_BUFFER_LENGTH + 1]; // Buffer of stored characters while waiting for terminator character
-    byte bufPos;                        // Current position in the buffer
-    char *last;                         // State variable used by strtok_r during processing
+    int numBinaryBytes;	                     // number of bytes to receive when in binary mode; 0 when in text mode
+    void (*binaryDone)(char *buf, int len);  // callback when binary data has been fully received
+
+    char buffer[COMMAND_BUFFER_LENGTH + 1]; // Buffer of stored characters while waiting for terminator
+    byte bufPos;                            // Current position in the buffer
+    char *last;                             // State variable used by strtok_r during processing
 };
 
 #endif //SerialCommand_h
