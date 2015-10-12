@@ -3,6 +3,7 @@ import os
 import os.path
 import threading
 from ola.ClientWrapper import ClientWrapper
+import ast
 
 class OlaThread(threading.Thread):
     def __init__(self):
@@ -24,15 +25,15 @@ class OlaThread(threading.Thread):
         # TODO catch exceptions
 
     def exit(self):
-        try: self.wrapper.Terminate()
-        except: self.wrapper.Stop()
+        #try: self.wrapper.Terminate()
+        self.wrapper.Stop()
 
     def getData(self):
         # return or print?
         return self.data
 
-o = OlaThread()
-o.start()
+OLA = OlaThread()
+OLA.start()
 
 while 1:
   line = input('save, load, or exit: ')
@@ -48,21 +49,27 @@ while 1:
     continue
 
   if tokens[0] == 'save':
-    filename = line[4:]
+    filename = line[4:].strip()
+    data = str(list(OLA.data)) 
+    #print(data)
     try:
-      with open(filename) as f:
-        f.write(str(list(OLA.data)))
+      with open(filename, 'w') as f:
+        f.write(data)
     except:
       print('Error saving file')
 
-  elif tokens[1] == 'load':
-    filename = line[4:]
-    try:
+  elif tokens[0] == 'load':
+      filename = line[4:].strip()
+    #print(filename)
+#    try:
       with open(filename) as f:
-        channels = list(f.readline())
-        OLA.client.SendDmx(1, channels)
-    except:
-      print('Error loading file')
+        text = f.readline()
+        #print(text)
+        channels = ast.literal_eval(text)
+        print(channels)
+        OLA.client.SendDmx(1, channels) 
+#    except:
+#      print('Error loading file')
 
 
 
