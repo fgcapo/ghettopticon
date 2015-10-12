@@ -4,7 +4,7 @@
 # set their device nodes' permissions so that ALL users can read and write to
 # them. The devices nodes are found under /dev/bus/usb/xxx/yyy.
 
-ACTION=="add|change", ATTRS{interface}=="DMX USB PRO", MODE="0666", SYMLINK="dmx"
+ACTION=="add|change", ATTRS{interface}=="DMX USB PRO", MODE="0666", SYMLINK="dmxusb"
 
 ACTION=="add|change", SUBSYSTEM=="tty", ATTRS{serial}=="85436323431351210161", MODE="0666", SYMLINK="led"
 
