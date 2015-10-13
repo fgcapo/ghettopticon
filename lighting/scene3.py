@@ -4,6 +4,7 @@ import os.path
 import threading
 from ola.ClientWrapper import ClientWrapper
 import ast
+import time
 
 class OlaThread(threading.Thread):
     def __init__(self):
@@ -72,4 +73,27 @@ while 1:
 #      print('Error loading file')
 
 
+  elif tokens[0] == 'fade':
+      time = 5.0
+      timestep = .1
+      filename = line[4:].strip()
+    #print(filename)
+#    try:
+      with open(filename) as f:
+        text = f.readline()
+        #print(text)
+        current = ast.literal_eval(text)
+        #print(channels)
+        vel = list(channels)
+        target = list(OLA.data)
+        for i in range(len(channels)):
+          vel[i] = (target[i] - current[i]) / time
+
+        for t in range(0, time, timestep):
+          current[i] += vel[i]
+          time.sleep(timestep)
+       
+        OLA.client.SendDmx(1, current) 
+#    except:
+#      print('Error loading file')
 
