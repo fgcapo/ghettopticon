@@ -1,10 +1,68 @@
-scene InkaArch
-	fade 1 inka
-	load warmwash
-	fade 1 off
-scene FleekyEatsASandwich
+scene BlueScrimIntro
+	fade bluescrim
 	seq 2
-		fade 1 bluetop
-		load redwash
-	fade 1 off
+		fade bluescrimfill
+		fade maskspoton
+
+scene Olga
+	seq 2
+		fade 3 olgaNS
+		fade 3 maskspoton
+	seq 2
+		fade 3 maskspotoff
+		fade 3 blackout
+
+scene JamieBlameless
+	seq 2
+		fade 3 
+		
+		
+scene FleekyBarrel
+	seq 2 
+		fade 2 fleekyNS
+		fade 2 maskspoton
+	seq 2
+		fade 2 maskspotoff
+		fade 3 blackout
+
+scene JamieDearSusan
+	seq 2 
+		load dearsusanNS
+		fade 3 maskspoton
+
+scene Inka
+	seq 3
+		fade 3 maskspotoff
+		fade 3 inkatarget
+	seq 2
+		fade 3 inkarbNS
+		fade 3 maskspoton
+	seq 2
+		fade 3 maskspotoff
+		fade 2 blackout
+
+scene JamieBeforeBrad
+	seq 2
+		load jamiebradNS
+		fade 3 maskspoton
+	seq 2
+		fade 3 maskspotoff
+		fade 2 blackout
+scene Brad
+	seq 2
+		load bradNS
+		fade 3 maskspoton
+	seq 2 
+		fade 3 maskspotoff
+		fade 2 blackout
+
+scene Intermission
+	seq 1 
+		fade 3 bluescrim
+		
+	seq 2
+		fade 2 bluescrimfill
+		fade 2 blackout
+		
+		
 		
