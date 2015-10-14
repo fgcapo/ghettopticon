@@ -9,18 +9,19 @@ from ola.ClientWrapper import ClientWrapper
 class OlaThread(threading.Thread):
   def __init__(self):
     threading.Thread.__init__(self)
-    self.data = [0] * 512
+    self.universe = 1
+    self.lastDataSent = [0] * 512   # set from both send() and receive callback, so may have thread issues
+    self.lastDataReceived = None
 
   def run(self):
     def onData(data):
         # TODO check on status before assigning data
-        self.data = data
+        self.lastDataReceived = data
         #print(data)
 
     self.wrapper = ClientWrapper()
     self.client = self.wrapper.Client()
-    universe = 1
-    self.client.RegisterUniverse(universe, self.client.REGISTER, onData)
+    self.client.RegisterUniverse(self.universe, self.client.REGISTER, onData)
     print('running OLA thread...')
     self.wrapper.Run()
     # TODO catch exceptions
@@ -28,8 +29,15 @@ class OlaThread(threading.Thread):
   def exit(self):
     self.wrapper.Stop()
 
-  def getData(self):
-    return self.data
+  def getLastReceived(self):
+    return self.lastDataReceived
+
+  def getLastSent(self):
+    return self.lastDataSent
+
+  def send(self, data):
+    self.lastDataSent = data
+    self.client.SendDmx(self.universe, data)
 
 OLA = OlaThread()
 OLA.start()
@@ -95,14 +103,21 @@ class CueLoad(Cue):
     try:
       with open(filename) as f:
         text = f.readline()
-        #print(text)
+        print(text)
         self.target = ast.literal_eval(text)
     except OSError as e:
       raise BaseException('Error loading file: ' + str(e))
 
   def run(self, immediate=False):
     try:
-      OLA.client.SendDmx(1, self.target)
+      current = list(OLA.getLastSent())
+
+      # allow for value of -1 to not change current value
+      for i in range(len(current)):
+        if self.target[i] < 0:
+          self.target[i] = current[i]
+
+      OLA.send(self.target)
     except:
       raise BaseException('Error talking to OLA DMX server')
 
@@ -137,11 +152,11 @@ class CueFade(Cue):
   def run(self, immediate=False):
     try:
       timestep = .05
-      current = list(OLA.data)
+      current = list(OLA.getLastSent())
       vel = [0] * len(current)
 
       if immediate:
-        OLA.client.SendDmx(1, self.target)
+        OLA.send(self.target)
         return
 
       # calculate delta for each timestep
@@ -155,7 +170,7 @@ class CueFade(Cue):
       for t in frange(0, self.period, timestep):
         for i in range(len(current)): current[i] += vel[i]
         channels = [int(x) for x in current] 
-        OLA.client.SendDmx(1, channels)
+        OLA.send(channels)
         time.sleep(timestep)
 
       print('DONE')
@@ -178,7 +193,7 @@ def cmdSave(tokens, line):
     raise BaseException('no filename')
 
   filename = restAfterWord(tokens[0], line)
-  data = str(list(OLA.getData())) 
+  data = str(list(OLA.getLastReceived())) 
   #print(data)
   try:
     with open(filename, 'w') as f:
