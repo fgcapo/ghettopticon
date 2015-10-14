@@ -1,0 +1,10 @@
+scene InkaArch
+	fade 1 inka
+	load warmwash
+	fade 1 off
+scene FleekyEatsASandwich
+	seq 2
+		fade 1 bluetop
+		load redwash
+	fade 1 off
+		
