@@ -61,7 +61,7 @@ class CueEngine:
       self.ixCue -= 1
 
     print(self.getLoc(), 'previous cue:', self.thisCue().line.strip())
-    self.thisCue().run()
+    self.thisCue().run(True)
 
   def nextScene(self): 
     if self.onLastScene():

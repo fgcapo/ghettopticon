@@ -67,7 +67,7 @@ class Cue:
   def __init__(self, line):
     self.line = line
 
-  def run(self):
+  def run(self, immediate=False):
     print('empty cue')
 
 class CueSequence(Cue):
@@ -76,7 +76,7 @@ class CueSequence(Cue):
     self.cues = []
   def addCue(self, cue):
     self.cues.append(cue)
-  def run(self):
+  def run(self, immediate=False):
     for cue in self.cues:
       print ('-', cue.line.strip())
       cue.run()
@@ -100,7 +100,7 @@ class CueLoad(Cue):
     except OSError as e:
       raise BaseException('Error loading file: ' + str(e))
 
-  def run(self):
+  def run(self, immediate=False):
     try:
       OLA.client.SendDmx(1, self.target)
     except:
@@ -134,11 +134,15 @@ class CueFade(Cue):
     except (OSError, IOError) as e:
       raise BaseException('Error loading file: ' + str(e))
  
-  def run(self):
+  def run(self, immediate=False):
     try:
       timestep = .05
       current = list(OLA.data)
       vel = [0] * len(current)
+
+      if immediate:
+        OLA.client.SendDmx(1, self.target)
+        return
 
       # calculate delta for each timestep
       # -1 means don't change
