@@ -205,14 +205,12 @@ if __name__ == '__main__':
 
     # track spots off or on
     elif ch == 't':
-     OLA.lastDataSent[166] = OLA.lastDataSent[175] = 255
+     OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 255
      OLA.send(OLA.lastDataSent)
     elif ch == 'y':
-     OLA.lastDataSent[166] = OLA.lastDataSent[175] = 0
+     OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 0
      OLA.send(OLA.lastDataSent)
-
-    
-
+    # manual control of left track spots
     else:
       spotLeft.onKey(ch)
       spotRight.onKey(ch) 

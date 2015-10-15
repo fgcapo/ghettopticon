@@ -1,5 +1,5 @@
 scene BlueScrimIntro
-	fade bluescrim
+	fade 2 bluescrimNS
 	seq 2
 		fade 3 bluescrimfill
 		fade 3 maskspoton
@@ -68,6 +68,7 @@ scene Intermission
 	seq 2 
 		fade 3 bluescrim
 		fade 2 bluescrimIntermission
+		fade 2 intermissionceilingbounce
 		
 	seq 2
 		fade 2 bluescrimfill
