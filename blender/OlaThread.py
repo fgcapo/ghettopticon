@@ -11,7 +11,7 @@ class OlaThread(threading.Thread):
         def onData(data):
             # TODO check on status before assigning data
             self.data = data
-            print(data)
+            #print(data)
 
         self.wrapper = ClientWrapper()
         self.client = self.wrapper.Client()
@@ -21,7 +21,8 @@ class OlaThread(threading.Thread):
         self.wrapper.Run()
 
     def exit(self):
-        self.wrapper.Terminate()
+        try: self.wrapper.Terminate()
+        except: self.wrapper.Stop()
 
     def getData(self):
         # return or print?
