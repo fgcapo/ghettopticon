@@ -152,6 +152,9 @@ class CueFade(Cue):
   def run(self, immediate=False):
     try:
       timestep = .05
+      printPeriodPeriod = .25
+      printPeriodTimestepCount = printPeriodPeriod / timestep
+
       current = list(OLA.getLastSent())
       vel = [0] * len(current)
 
@@ -165,12 +168,13 @@ class CueFade(Cue):
         if self.target[i] >= 0:
           vel[i] = (self.target[i] - current[i]) * (timestep / self.period)
 
-      print('fading for', self.period, 'seconds............................. ', end='', flush=True)
+      print('                 fading for', self.period, 'seconds..', end='', flush=True)
 
       for t in frange(0, self.period, timestep):
         for i in range(len(current)): current[i] += vel[i]
         channels = [int(x) for x in current] 
         OLA.send(channels)
+        if t % printPeriodPeriod == 0: print('.', end='', flush=True)
         time.sleep(timestep)
 
       print('DONE')

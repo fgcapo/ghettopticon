@@ -78,11 +78,44 @@ void BioloidController::loadPose( const unsigned int * addr ){
 }
 /* read in current servo positions to the pose. */
 void BioloidController::readPose(){
-    for(int i=0;i<poseSize;i++){
+    for(int i=0;i<poseSize; i++){
         pose_[i] = ax12GetRegister(id_[i],AX_PRESENT_POSITION_L,2)<<BIOLOID_SHIFT;
         delay(25);   
     }
 }
+int BioloidController::readPose(int index){
+    int pose = ax12GetRegister(id_[index],AX_PRESENT_POSITION_L,2);
+    pose_[index] = pose << BIOLOID_SHIFT;
+	delay(25);
+	return pose;
+}
+
+/* get a servo value in the current pose */
+int BioloidController::getCurPose(int id){
+    for(int i=0; i<poseSize; i++){
+        if( id_[i] == id )
+            return ((pose_[i]) >> BIOLOID_SHIFT);
+    }
+    return -1;
+}
+/* get a servo value in the next pose */
+int BioloidController::getNextPose(int id){
+    for(int i=0; i<poseSize; i++){
+        if( id_[i] == id )
+            return ((nextpose_[i]) >> BIOLOID_SHIFT);
+    }
+    return -1;
+}
+/* set a servo value in the next pose */
+void BioloidController::setNextPose(int id, int pos){
+    for(int i=0; i<poseSize; i++){
+        if( id_[i] == id ){
+            nextpose_[i] = (pos << BIOLOID_SHIFT);
+            return;
+        }
+    }
+}
+
 /* write pose out to servos using sync write. */
 void BioloidController::writePose(){
     int temp;
@@ -154,32 +187,6 @@ void BioloidController::interpolateStep(){
     }
     if(complete <= 0) interpolating = 0;
     writePose();      
-}
-
-/* get a servo value in the current pose */
-int BioloidController::getCurPose(int id){
-    for(int i=0; i<poseSize; i++){
-        if( id_[i] == id )
-            return ((pose_[i]) >> BIOLOID_SHIFT);
-    }
-    return -1;
-}
-/* get a servo value in the next pose */
-int BioloidController::getNextPose(int id){
-    for(int i=0; i<poseSize; i++){
-        if( id_[i] == id )
-            return ((nextpose_[i]) >> BIOLOID_SHIFT);
-    }
-    return -1;
-}
-/* set a servo value in the next pose */
-void BioloidController::setNextPose(int id, int pos){
-    for(int i=0; i<poseSize; i++){
-        if( id_[i] == id ){
-            nextpose_[i] = (pos << BIOLOID_SHIFT);
-            return;
-        }
-    }
 }
 
 /* play a sequence. */

@@ -76,7 +76,8 @@ class DmxChannels:
 DMX = DmxChannels()
 
 ########################################################################
-# LED controller
+# serial methods
+
 def openSerial(path, baud=38400):
     uc = None
     try:
@@ -152,8 +153,8 @@ class SerialThread (threading.Thread):
             self.uc.close()
             self.uc = None
 
-#############################################################################
-# LEDs
+########################################################################
+# LED controller
 class LEDs(SerialThread):
     def __init__(self, path):
         SerialThread.__init__(self, path)        
@@ -261,6 +262,8 @@ def moveAllServos(pos, binary=False):
         anglesDict[i+1] = pos
     setServoPos(anglesDict, binary)
 
+def readServos():
+    ucServos.write(b'r\n')
 
 #########################################################################
 def monitorScene():
@@ -313,7 +316,7 @@ def k(cont):
         return  #don't do anything else this frame!
 
     if keypressed(bge.events.RKEY):
-        ucServos.write(b'r\n')
+        ucServos.readServos()
     if keypressed(bge.events.QKEY):
         moveAllServos(512)
         bge.logic.getCurrentScene().lights['Spot0'].energy = 0.0
