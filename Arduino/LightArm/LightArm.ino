@@ -14,6 +14,7 @@ SerialCommand::Entry CommandsList[] = {
   {"s",      cmdSetServoPosition},
   {"B",      cmdSetServoPositionBinary},
   {"relax",  cmdRelax},
+  {"torq",   cmdTorque},
   {NULL,     NULL}
 };
 
@@ -26,7 +27,7 @@ BioloidController Servos(1000000);
 // at the target position simultaneously. But movement time will be constrained so that
 // no servo will move faster than this maximum speed, constrained to [1-1000].
 // Speed is inverted to simplify calculation.
-int gMaxSpeedInv = 2;  // max servo movement speed inverted, in ms per angle-unit
+int gMaxSpeedInv = 10;  // max servo movement speed inverted, in ms per angle-unit
 
 bool relaxed = false;
 
@@ -94,11 +95,84 @@ void readVoltage() {
 
 
 void cmdRelax() {
-  relaxed = true;
-  for(int i = 0; i < NumServos; i++) {
-    Relax(Servos.getId(i));
+  
+  const int maxAngles = NumServos;
+  int ids[maxAngles];
+  int count = 0;
+  
+  while(char *arg = CmdMgr.next()) {
+    if(count >= NumServos) {
+      printlnError("Error: too many IDs");
+      return;
+    }
+    
+    int id;
+
+    if(!toInt(arg, &id) || id < 1 || id > 127) {
+      printlnError("Error: ID must be between 1 and 127");
+      return;
+    }
+    
+    ids[count++] = id;
   }
+  
+  if(count == 0) {
+    count = NumServos;
+    for(int i = 0; i < NumServos; i++) {
+      Relax(Servos.getId(i));
+    }
+  }
+  else {
+    for(int i = 0; i < count; i++) {
+      Relax(ids[i]);
+    }
+  }
+  
+  // TODO not sure how useful a single flag is
+  //relaxed = true;
+  
+  printAck("Relaxed ");
+  printAck(count);
+  printlnAck(" Servos");
 }
+
+void cmdTorque() {
+  
+  const int maxAngles = NumServos;
+  int ids[maxAngles];
+  int count = 0;
+  
+  while(char *arg = CmdMgr.next()) {
+    int id;
+
+    if(!toInt(arg, &id) || id < 1 || id > 127) {
+      printlnError("Error: ID must be between 1 and 127");
+      return;
+    }
+    
+    ids[count++] = id;
+  }
+  
+  if(count == 0) {
+    count = NumServos;
+    for(int i = 0; i < NumServos; i++) {
+      TorqueOn(Servos.getId(i));
+    }
+  }
+  else {
+    for(int i = 0; i < count; i++) {
+      TorqueOn(ids[i]);
+    }
+  }
+  
+  // TODO not sure how useful a single flag is
+  //relaxed = true;
+  
+  printAck("Enabled torque on ");
+  printAck(count);
+  printlnAck(" Servos");
+}
+
 
 // if no argument, prints the maximum speed
 // if one argument, sets the maximum speed and then prints it
@@ -130,7 +204,7 @@ void readServoPositions() {
   
   Servos.readPose();
 
-  for(int i = 0; i < Servos.poseSize; i++) {
+  for(int i = 0; i < NumServos; i++) {
     int id = Servos.getId(i);
     int pos = Servos.getCurPose(id);
     //int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
@@ -139,7 +213,7 @@ void readServoPositions() {
     if(pos > 2000) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
     
     // print key:value pairs space delimited, but column-aligned
-    char buf[32];
+    char buf[16];
     int ixEnd = sprintf(buf, "ID:%d", id);
     while(ixEnd < 5) buf[ixEnd++] = ' ';
     buf[ixEnd] = '\0';
@@ -148,6 +222,21 @@ void readServoPositions() {
     printAck(" pos:");
     printlnAck(pos);
   }
+
+  // python dictionary notation  
+  char dictBuf[256] = "{";
+  int ix = 1;
+
+  for(int i = 0; i < NumServos; i++) {
+    int id = Servos.getId(i);
+    int pos = Servos.getCurPose(id);
+
+    if(i != 0) dictBuf[ix++] = ',';
+    ix += sprintf(dictBuf+ix, "%d:%d", id, pos);
+  }
+  
+  sprintf(dictBuf+ix, "}");
+  printlnAlways(dictBuf);
 }
 
 //servo serial command format:
@@ -159,7 +248,7 @@ void cmdSetServoPosition() {
 
   struct Tuple { int id, angle; };
   
-  const int maxAngles = Servos.poseSize;
+  const int maxAngles = NumServos;
   Tuple angles[maxAngles];
   int count = 0;
   
@@ -323,7 +412,7 @@ void setup() {
   // Safe guard: the move interpolation code moves all servos, so if a servo starts
   // off-center, and we move another servo, the first servo will move to center (the default "next" position).
   // So set the target position of each servo to its current position
-  for(int i = 0; i < Servos.poseSize; i++) {
+  for(int i = 0; i < NumServos; i++) {
     int id = Servos.getId(i);
     Servos.setNextPose(id, Servos.getCurPose(id));
   }

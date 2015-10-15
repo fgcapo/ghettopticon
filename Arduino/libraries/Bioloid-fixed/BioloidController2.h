@@ -53,7 +53,8 @@ class BioloidController
 
     /* Pose Manipulation */
     void loadPose( const unsigned int * addr ); // load a named pose from FLASH  
-    void readPose();                            // read a pose in from the servos  
+    void readPose();                            // read a pose in from the servos
+    int readPose(int index);					// read in the position of a single servo
     void writePose();                           // write a pose out to the servos
     int getCurPose(int id);                     // get a servo value in the current pose
     int getNextPose(int id);                    // get a servo value in the next pose

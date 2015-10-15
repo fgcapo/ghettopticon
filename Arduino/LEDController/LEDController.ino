@@ -5,27 +5,9 @@
 #include <SC.h>
 #include <PrintLevel.h>
 
-void r() {
-  for(int i = 0; i < 3; i++) {
-    int id = i;
-    int pos = i*2;
-    
-    // print key:value pairs space delimited, but column-aligned
-    char buf[32];
-    int ixEnd = sprintf(buf, "ID:%d", id);
-    while(ixEnd < 5) buf[ixEnd++] = ' ';
-    buf[ixEnd] = '\0';
-
-    printAck(buf);
-    printAck(" pos:");
-    printlnAck(pos);
-  }
-}
-
 SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
   {"pwm",    cmdPWMPins},
-  {"r",      r},
   {NULL,     NULL}
 };
 
