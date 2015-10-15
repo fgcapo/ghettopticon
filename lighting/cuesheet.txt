@@ -3,18 +3,27 @@ scene BlueScrimIntro
 	seq 2
 		fade bluescrimfill
 		fade maskspoton
+	seq 1
+		load maskspotoff
+
+scene JamieIntro
+	seq 2
+		load jamie1introNS
+		fade 2 maskspoton
 
 scene Olga
-	seq 2
-		fade 3 olgaNS
-		fade 3 maskspoton
+	seq 3
+		fade 2 maskspotoff
+		fade 2 olgaNS
+		fade 2 olga
 	seq 2
 		fade 3 maskspotoff
 		fade 3 blackout
 
 scene JamieBlameless
 	seq 2
-		fade 3 
+		fade 2 jamie2fleekyNS
+		fade 2 jamie2fleeky
 		
 		
 scene FleekyBarrel
@@ -27,35 +36,35 @@ scene FleekyBarrel
 
 scene JamieDearSusan
 	seq 2 
-		load dearsusanNS
+		load jamie3dearsusanNS
 		fade 3 maskspoton
 
 scene Inka
-	seq 3
-		fade 3 maskspotoff
-		fade 3 inkatarget
+	seq 1
+		fade 3 inkatargetspot
 	seq 2
 		fade 3 inkarbNS
 		fade 3 maskspoton
 	seq 2
-		fade 3 maskspotoff
+		fade 2 maskspotoff
 		fade 2 blackout
 
 scene JamieBeforeBrad
 	seq 2
-		load jamiebradNS
+		load jamie4bradNS
 		fade 3 maskspoton
-	seq 2
+	seq 1
 		fade 3 maskspotoff
-		fade 2 blackout
+
 scene Brad
-	seq 2
+	seq 1
 		load bradNS
-		fade 3 maskspoton
+	seq 1
+		fade 2 maskspoton
 	seq 2 
 		fade 3 maskspotoff
 		fade 2 blackout
-
+ 
 scene Intermission
 	seq 1 
 		fade 3 bluescrim
@@ -64,5 +73,102 @@ scene Intermission
 		fade 2 bluescrimfill
 		fade 2 blackout
 		
+scene Colin
+	seq 2
+		load colinspotdark
+		fade 2 colinspotdouble
+	seq 1
+		fade 2 maskspoton
+	seq 1
+		load maskspotoff
+	seq 1
+		fade 2 colinexitupdate
+
+scene JamieWalktheWeb
+	seq 1
+		fade 2 colinjamie
+
+scene FleekyWalktheWeb
+	seq 3
+		fade 2 maskspotoff
+		fade 2 wtwNS
+		fade 2 wtwred
+	seq 2
+		fade 2 maskspotoff
+		fade 2 blackout
+
+scene JamieGirlinTheHallway
+	seq 2
+		fade 3 rachelNS
+		fade 2 maskspoton
+
+scene EndRachelGirlinTheHallway
+	seq 2
+		fade 2 maskspotoff
+		fade 2 blackout
+
+scene JamieGodandtheMan
+	seq 2
+		fade 2 jamiemicahgodandthemanCHECKNS
+		fade 2 jamiemicahgodandthemanCHECK
+
+scene MicahGodandtheMan
+	seq 2
+		fade 2 maskspotoff
+		fade 2 micah
+	seq 2
+		fade 2 micahshiftNS
+		fade 2 micahshift
+
+scene JamieExitInterview
+	seq 3
+		load exitinterviewNS
+		fade 3 exitinterview
+		fade 2 maskspotoff
+
+scene RachelPetri
+	seq 2
+		fade 2 rachelpetriNS
+		fade 2 rachelpetri
+	seq 2
+		fade 2 rachelpetriNS
+		load blackout
+
+scene JamieAnalgesia
+	seq 3
+		fade 2 WSBFNS
+		fade 2 WSBF
+		fade 2 WSBFNS
+
+scene BradColin
+	seq 1
+		load EL
+	seq 1
+		load EL2doublecheck
+	seq 1
+		load EL3doublecheck
+	seq 1
+		load EL4doublecheck
+	seq 1
+		load tumble
+	seq 1
+		load EL5doublecheck
+	seq 1
+		load tumble
+
+scene Closing
+	seq 3
+		fade 2 maskspotoff
+		fade 2 blackout
+		fade 3 bluescrim
+
 		
+
+
+
+
+		
+		
+		
+
 		
