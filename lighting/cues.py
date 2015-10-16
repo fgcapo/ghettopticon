@@ -5,6 +5,10 @@ from scene3 import OLA, restAfterWord, Cue
 
 CuesFilename = 'cuesheet2.txt'
 
+def openCueFile(filenameOnly, mode):
+  return open('scenes/' + filenameOnly, mode)
+
+
 class Scene:
   def __init__(self, name):
     self.name = name

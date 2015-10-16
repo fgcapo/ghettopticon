@@ -68,6 +68,9 @@ def frange(start, end=None, inc=None):
 def restAfterWord(word, line):
   return line[line.find(word) + len(word):].strip()
 
+def openCueFile(filenameOnly, mode='r'):
+  return open('scenes/' + filenameOnly, mode)
+
 ########################################################
 # cue commands
 
@@ -101,7 +104,7 @@ class CueLoad(Cue):
     filename = restAfterWord(tokens[0], line)
     #print(filename)
     try:
-      with open(filename) as f:
+      with openCueFile(filename) as f:
         text = f.readline()
         #print(text)
         self.target = ast.literal_eval(text)
@@ -142,7 +145,7 @@ class CueFade(Cue):
       filename = restAfterWord(tokens[0], line)
 
     try:      
-      with open(filename) as f:
+      with openCueFile(filename) as f:
         text = f.readline()
         #print(text)
         self.target = ast.literal_eval(text)
@@ -200,7 +203,7 @@ def cmdSave(tokens, line):
   data = str(list(OLA.getLastReceived())) 
   #print(data)
   try:
-    with open(filename, 'w') as f:
+    with openCueFile(filename, 'w') as f:
       f.write(data)
   except:
     raise BaseException('Error saving file')

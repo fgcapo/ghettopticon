@@ -1,7 +1,7 @@
 scene BlueScrimIntro
 	seq 1	
 		fade 2 beforeShowOlgaTeaTime
-	seq 1
+	seq 2
 		fade 2 maskspotoff
 		fade 7 blackout
 
