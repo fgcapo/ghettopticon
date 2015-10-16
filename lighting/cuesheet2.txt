@@ -1,10 +1,10 @@
 scene BlueScrimIntro
-	fade bluescrim
+	fade 2 bluescrimNS
 	seq 2
-		fade bluescrimfill
-		fade maskspoton
+		fade 3 bluescrimfill
+		fade 3 maskspoton
 	seq 1
-		load maskspotoff
+		fade 2 maskspotoff
 
 scene JamieIntro
 	seq 2
@@ -24,7 +24,6 @@ scene JamieBlameless
 	seq 2
 		fade 2 jamie2fleekyNS
 		fade 2 jamie2fleeky
-		
 		
 scene FleekyBarrel
 	seq 2 
@@ -66,8 +65,10 @@ scene Brad
 		fade 2 blackout
  
 scene Intermission
-	seq 1 
+	seq 2 
 		fade 3 bluescrim
+		fade 2 bluescrimIntermission
+		fade 2 intermissionceilingbounce
 		
 	seq 2
 		fade 2 bluescrimfill
@@ -99,8 +100,14 @@ scene FleekyWalktheWeb
 
 scene JamieGirlinTheHallway
 	seq 2
-		fade 3 rachelNS
+		fade 3 jamiegirlhallwaylessfillCHECKNS
 		fade 2 maskspoton
+
+scene Rachel
+	seq 3
+		fade 2 maskspotoff
+		fade 3 rachelNS
+		fade 2 rachel        
 
 scene EndRachelGirlinTheHallway
 	seq 2
@@ -124,10 +131,10 @@ scene JamieExitInterview
 	seq 3
 		load exitinterviewNS
 		fade 3 exitinterview
-		fade 2 maskspotoff
 
 scene RachelPetri
-	seq 2
+	seq 3
+		fade 2 maskspotoff
 		fade 2 rachelpetriNS
 		fade 2 rachelpetri
 	seq 2
@@ -135,24 +142,31 @@ scene RachelPetri
 		load blackout
 
 scene JamieAnalgesia
-	seq 3
+	seq 2
 		fade 2 WSBFNS
 		fade 2 WSBF
+	seq 1
 		fade 2 WSBFNS
 
 scene BradColin
 	seq 1
 		load EL
 	seq 1
-		load EL2doublecheck
+		load EL2
 	seq 1
-		load EL3doublecheck
+		load EL3
 	seq 1
-		load EL4doublecheck
+		load EL4
 	seq 1
 		load tumble
 	seq 1
-		load EL5doublecheck
+		load EL5
+	seq 1
+		load EL4
+	seq 1
+		load tumble
+	seq 1
+		load EL5
 	seq 1
 		load tumble
 

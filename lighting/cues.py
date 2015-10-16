@@ -3,7 +3,7 @@ from getch import getch
 import scene3 as scene
 from scene3 import OLA, restAfterWord, Cue
 
-CuesFilename = 'cuesheet.txt'
+CuesFilename = 'cuesheet2.txt'
 
 class Scene:
   def __init__(self, name):
@@ -146,6 +146,35 @@ with open(CuesFilename) as f:
     line = f.readline()
 
 
+class TrackSpot:
+  def __init__(self, x, y, lum, up, down, left, right, brighter, darker):
+    self.x = x-1
+    self.y = y-1
+    self.lum = lum-1
+    self.up = up
+    self.down = down
+    self.left = left
+    self.right = right
+    self.brighter = brighter
+    self.darker = darker
+
+  def onKey(self, ch):
+    inc = 5
+    if ch == self.up:         self.set(self.x, inc)
+    elif ch == self.down:     self.set(self.x, -inc)
+    elif ch == self.left:     self.set(self.y, inc)
+    elif ch == self.right:    self.set(self.y, -inc)
+    elif ch == self.brighter: self.set(self.lum, inc)
+    elif ch == self.darker:   self.set(self.lum, -inc)
+    else: return
+
+  def set(self, channel, inc):
+    v = OLA.lastDataSent[channel]
+    v = min(255, max(0, v+inc))
+    print(channel, '=', OLA.lastDataSent[channel], '->', v)
+    OLA.lastDataSent[channel] = v
+    OLA.send(OLA.lastDataSent)
+
 
 if __name__ == '__main__':
   # wait for OLA client to connect
@@ -159,7 +188,8 @@ if __name__ == '__main__':
   print('Press Space initially to black out lights:')
 #  scene.CueLoad('load blackout').run()
 
-  sums = [0]*4
+  spotLeft =  TrackSpot(162, 161, 166, 'w', 's', 'a', 'd', 'e', 'q')
+  spotRight = TrackSpot(171, 170, 175, '8', '5', '6', '4', '9', '7')
 
   while 1:
     ch = getch().lower()
@@ -174,10 +204,19 @@ if __name__ == '__main__':
       CueMgr.nextScene()
     elif ch == ',' or ch == '<':
       CueMgr.prevScene()
+    elif ch == 'p':
+      print(OLA.lastDataSent)
 
-    elif ch == 'w': sums[0] += 1
-    elif ch == 's': sums[1] += 1
-    elif ch == 'a': sums[2] += 1
-    elif ch == 'd': sums[3] += 1
-    elif ch == 'p': print(sums)
+    # track spots off or on
+    elif ch == 't':
+     OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 255
+     OLA.send(OLA.lastDataSent)
+    elif ch == 'y':
+     OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 0
+     OLA.send(OLA.lastDataSent)
+    # manual control of left track spots
+    else:
+      spotLeft.onKey(ch)
+      spotRight.onKey(ch) 
+
 
