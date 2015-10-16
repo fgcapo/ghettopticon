@@ -82,8 +82,9 @@ class CueEngine:
 
 CueMgr = CueEngine()
 
-
+# parse the cues file
 with open(CuesFilename) as f:
+  lineNum = 0
   curScene = None
   #groupStack = []
   #def pushGroup(cmd, indent): groupStack.append((cmd, indent))
@@ -93,13 +94,16 @@ with open(CuesFilename) as f:
 
   line = f.readline()
   while line:
+    lineNum += 1
     tokens = line.split()
-    if len(tokens): 
-        cmd = tokens[0]
+
+    # skip empty lines and lines where the first token is #
+    if len(tokens) and not tokens[0].startswith('#'): 
+      cmd = tokens[0]
       #indent = line[:line.find(cmd)]
       #while(len(indent) < len(lastGroupIndent)
 
-      #try:
+      try:
         if cmd == 'scene':
           curScene = Scene(restAfterWord(cmd, line))
           CueMgr.addScene(curScene)
@@ -134,11 +138,14 @@ with open(CuesFilename) as f:
           print('Error unrecognized command')
           print('Text', line)
 
-      #except BaseException as e:
-      #  print(e)
-      #  print('Text', line)
+      except BaseException as e:
+        print(e)
+        print('Line Number:', lineNum)
+        print('Text', line)
 
     line = f.readline()
+
+
 
 if __name__ == '__main__':
   # wait for OLA client to connect
@@ -151,6 +158,8 @@ if __name__ == '__main__':
   print('----------------------')
   print('Press Space initially to black out lights:')
 #  scene.CueLoad('load blackout').run()
+
+  sums = [0]*4
 
   while 1:
     ch = getch().lower()
@@ -166,4 +175,9 @@ if __name__ == '__main__':
     elif ch == ',' or ch == '<':
       CueMgr.prevScene()
 
+    elif ch == 'w': sums[0] += 1
+    elif ch == 's': sums[1] += 1
+    elif ch == 'a': sums[2] += 1
+    elif ch == 'd': sums[3] += 1
+    elif ch == 'p': print(sums)
 

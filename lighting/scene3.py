@@ -103,7 +103,7 @@ class CueLoad(Cue):
     try:
       with open(filename) as f:
         text = f.readline()
-        print(text)
+        #print(text)
         self.target = ast.literal_eval(text)
     except OSError as e:
       raise BaseException('Error loading file: ' + str(e))
@@ -222,7 +222,7 @@ if __name__ == '__main__':
       if cmd == 'save':   cmdSave(tokens, line)
       elif cmd == 'load': cmdCue(line, CueLoad)
       elif cmd == 'fade': cmdCue(line, CueFade)
-      else: print('Unrecigbuzed command')
+      else: print('Unrecognized command')
     except BaseException as e:
       print(e)
 
