@@ -1,10 +1,9 @@
 scene BlueScrimIntro
-	fade 2 bluescrimNS
-	seq 2
-		fade 3 bluescrimfill
-		fade 3 maskspoton
+	seq 1	
+		fade 2 beforeShowOlgaTeaTime
 	seq 1
 		fade 2 maskspotoff
+		fade 7 blackout
 
 scene JamieIntro
 	seq 2
@@ -57,7 +56,7 @@ scene JamieBeforeBrad
 
 scene Brad
 	seq 1
-		load bradNS
+		fade 2 bradNS
 	seq 1
 		fade 2 maskspoton
 	seq 2 
@@ -67,7 +66,6 @@ scene Brad
 scene Intermission
 	seq 2 
 		fade 3 bluescrim
-		fade 2 bluescrimIntermission
 		fade 2 intermissionceilingbounce
 		
 	seq 2
@@ -75,9 +73,8 @@ scene Intermission
 		fade 2 blackout
 		
 scene Colin
-	seq 2
+	seq 1
 		load colinspotdark
-		fade 2 colinspotdouble
 	seq 1
 		fade 2 maskspoton
 	seq 1
@@ -129,6 +126,7 @@ scene MicahGodandtheMan
 
 scene JamieExitInterview
 	seq 3
+		fade 2 maskspotoff
 		load exitinterviewNS
 		fade 3 exitinterview
 
@@ -162,9 +160,11 @@ scene BradColin
 	seq 1
 		load EL5
 	seq 1
-		load EL4
+		load EL3
 	seq 1
 		load tumble
+	seq 1
+		load ELhighfive
 	seq 1
 		load EL5
 	seq 1
