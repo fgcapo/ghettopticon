@@ -5,11 +5,15 @@ scene BlueScrimIntro
 		fade 2 maskspotoff
 		fade 7 blackout
 
+# right spot white, left spot magenta
 scene JamieIntro
 	seq 2
 		load jamie1introNS
 		fade 2 maskspoton
 
+# "Charlemagne, Charlemagne, Charlemagne!"
+# "Enjoy driving you crazy"
+# light doors
 scene Olga
 	seq 3
 		fade 2 maskspotoff
@@ -19,15 +23,19 @@ scene Olga
 		fade 3 maskspotoff
 		fade 3 blackout
 
+# wait 2 seconds
+# right spot white, left spot blue
 scene JamieBlameless
 	seq 2
 		fade 2 jamie2fleekyNS
 		fade 2 jamie2fleeky
-		
+
+# "I do not care about about a fucking ring"
 scene FleekyBarrel
 	seq 2 
 		fade 2 fleekyNS
 		fade 2 maskspoton
+	# wait one rotation	
 	seq 2
 		fade 2 maskspotoff
 		fade 3 blackout
@@ -37,12 +45,16 @@ scene JamieDearSusan
 		load jamie3dearsusanNS
 		fade 3 maskspoton
 
+# Prepare on "Love will never have to do with crucifixes"
+# Arrows in Inka
 scene Inka
 	seq 1
 		fade 3 inkatargetspot
+	# Micah leaves
 	seq 2
 		fade 3 inkarbNS
 		fade 3 maskspoton
+	# Inka walks off
 	seq 2
 		fade 2 maskspotoff
 		fade 2 blackout
@@ -54,20 +66,24 @@ scene JamieBeforeBrad
 	seq 1
 		fade 3 maskspotoff
 
+# "Sugar with magic sprinkles"
 scene Brad
 	seq 1
 		fade 2 bradNS
+	# first trick
 	seq 1
 		fade 2 maskspoton
-	seq 2 
-		fade 3 maskspotoff
+	# curtains close
+	seq 1
+		fade 1.5 maskspotoff
+	# curtains closed
+	seq 1
 		fade 2 blackout
  
 scene Intermission
 	seq 2 
-		fade 3 bluescrim
+		fade 2 intermissionceilingbounceNS
 		fade 2 intermissionceilingbounce
-		
 	seq 2
 		fade 2 bluescrimfill
 		fade 2 blackout
