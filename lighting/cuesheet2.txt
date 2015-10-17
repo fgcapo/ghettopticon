@@ -85,7 +85,7 @@ scene Intermission
 		fade 2 intermissionceilingbounceNS
 		fade 2 intermissionceilingbounce
 	seq 2
-		fade 2 bluescrimfill
+		fade 2 intermissionceilingbounceNS
 		fade 2 blackout
 		
 scene Colin
@@ -103,7 +103,7 @@ scene JamieWalktheWeb
 		fade 2 colinjamie
 
 scene FleekyWalktheWeb
-	seq 3
+	seq 344
 		fade 2 maskspotoff
 		fade 2 wtwNS
 		fade 2 wtwred
@@ -115,6 +115,7 @@ scene JamieGirlinTheHallway
 	seq 2
 		fade 3 jamiegirlhallwaylessfillCHECKNS
 		fade 2 maskspoton
+		#fade out spot manually, wait for hoop posing
 
 scene Rachel
 	seq 3
@@ -125,6 +126,8 @@ scene Rachel
 scene EndRachelGirlinTheHallway
 	seq 2
 		fade 2 maskspotoff
+		fade 3 jamiegirlhallwaylessfillCHECKNS
+	seq 1
 		fade 2 blackout
 
 scene JamieGodandtheMan
@@ -164,27 +167,21 @@ scene JamieAnalgesia
 
 scene BradColin
 	seq 1
-		load EL
+		load ELJoyce
 	seq 1
-		load EL2
+		load EL2Joyce
 	seq 1
-		load EL3
+		load EL3Joyce
 	seq 1
 		load EL4
 	seq 1
-		load tumble
+		load prestageJoyce
 	seq 1
-		load EL5
+		load tumblefrontlit
 	seq 1
-		load EL3
+		load EL5Joyce
 	seq 1
-		load tumble
-	seq 1
-		load ELhighfive
-	seq 1
-		load EL5
-	seq 1
-		load tumble
+		load tumblefrontlit
 
 scene Closing
 	seq 3
