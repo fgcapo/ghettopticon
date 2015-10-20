@@ -13,20 +13,21 @@ class Scene:
   def __init__(self, name):
     self.name = name
     self.cues = []
-  def addCue(self, cue):
+  def add(self, cue):
     self.cues.append(cue)
+
 
 class CueEngine:
   def __init__(self):
-    self.scenes = [Scene('Beginning')]
-    self.scenes[0].addCue(scene.CueLoad('load off'))
+    self.scenes = [Scene('Beginning Blackout')]
+    self.scenes[0].add(scene.CueLoad('load off'))
     self.ixScene = 0  # current scene
     self.ixCue = -1   # cue we just ran
   
   def thisScene(self): return self.scenes[self.ixScene]
   def thisCue(self):   return self.thisScene().cues[self.ixCue]
 
-  def addScene(self, scene):
+  def add(self, scene):
     self.scenes.append(scene)
 
   def getLoc(self):
@@ -46,6 +47,7 @@ class CueEngine:
         return
       self.ixScene += 1
       self.ixCue = 0
+      print('--------------------------------------------------------------')
       print(self.getLoc(), 'Scene:', self.thisScene().name)
     else:
       self.ixCue += 1
@@ -90,65 +92,66 @@ CueMgr = CueEngine()
 with open(CuesFilename) as f:
   lineNum = 0
   curScene = None
-  #groupStack = []
-  #def pushGroup(cmd, indent): groupStack.append((cmd, indent))
-  #def lastGroupIndent(): return groupStack[-1][1]
-  numSeqLeft = 0
-  curSeq = None
+  indentStack = []  # stack of tuples of (node, indent_len)
+
+  def pushIndent(node, indentLen): indentStack.append((node, indentLen))
+  def popIndent(): indentStack.pop()
+  def topIndent(): return indentStack[-1]
+  def topIndentLen(): return indentStack[-1][1]
+
+  seenTab, seenSpace = False, False
+  pushIndent(CueMgr, -1)
 
   line = f.readline()
   while line:
     lineNum += 1
     tokens = line.split()
-
+    
     # skip empty lines and lines where the first token is #
     if len(tokens) and not tokens[0].startswith('#'): 
       cmd = tokens[0]
-      #indent = line[:line.find(cmd)]
-      #while(len(indent) < len(lastGroupIndent)
+      indent = line[:line.find(cmd)]
+      indentLen = len(indent)
+      thisNode = None
+
+      #test for mixed indentation characters
+      if indent.find(' ') >= 0: seenSpace = True
+      if indent.find('\t') >= 0: seenTab = True
+      if seenSpace and seenTab:
+        print('The cue file mixes spaces and tabs.  Please use one or the other')
+        exit()
+      
+      # remove cmds with <= indent, because their block/revelance is over
+      # TODO handle this indentation error case:
+      # s
+      #   s
+      #  s
+      while indentLen <= topIndentLen():
+        popIndent()
 
       try:
         if cmd == 'scene':
-          curScene = Scene(restAfterWord(cmd, line))
-          CueMgr.addScene(curScene)
+          thisNode = Scene(restAfterWord(cmd, line))
         elif cmd == 'seq':
-          curSeq = scene.CueSequence(line)
-          try:
-            token = tokens[1]
-            numSeqLeft = int(token)
-          except:
-            print('Error: seq needs to be followed by the number of cues')
-            #OLA.exit()
-            exit()
-          curScene.addCue(curSeq)
-
+          thisNode = scene.CueSequence(line)
         elif cmd == 'load':
-          cue = scene.CueLoad(line)
-          if not curSeq: curScene.addCue(cue)
-          else:
-            curSeq.addCue(cue)
-            numSeqLeft -= 1
-            if numSeqLeft == 0: curSeq = None
-          
+          thisNode = scene.CueLoad(line)
         elif cmd == 'fade':
-          cue = scene.CueFade(line)
-          if not curSeq: curScene.addCue(cue)
-          else:
-            curSeq.addCue(cue)
-            numSeqLeft -= 1
-            if numSeqLeft == 0: curSeq = None
-
+          thisNode = scene.CueFade(line)
         else:
-          print('Error unrecognized command')
-          print('Text', line)
+          print('Error unrecognized command on line', lineNum)
+          print('Text:', line)
 
       except BaseException as e:
         print(e)
         print('Line Number:', lineNum)
-        print('Text', line)
+        print('Text:', line)
 
+      if thisNode:
+        topIndent()[0].add(thisNode)
+        pushIndent(thisNode, indentLen)
+ 
     line = f.readline()
-
 
 class TrackSpot:
   def __init__(self, x, y, lum, up, down, left, right, brighter, darker):
