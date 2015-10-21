@@ -188,7 +188,7 @@ if __name__ == '__main__':
   time.sleep(1)
   print('z:     exit')
   print('Space: next cue')
-  print('b:     previous cue')
+  print('/:     previous cue')
   print('>:     next scene')
   print('<:     previous scene')
   print('----------------------')
@@ -197,6 +197,7 @@ if __name__ == '__main__':
 
   spotLeft =  TrackSpot(162, 161, 166, 'w', 's', 'a', 'd', 'e', 'q')
   spotRight = TrackSpot(171, 170, 175, '8', '5', '6', '4', '9', '7')
+  spotCenter = TrackSpot(194, 193, 198, 'g', 'b', 'n', 'v', 'f', 'h')
 
   while 1:
     ch = getch().lower()
@@ -205,7 +206,7 @@ if __name__ == '__main__':
       break
     elif ch == ' ':
       CueMgr.nextCue()
-    elif ch == 'b' or ch == 'B':
+    elif ch == '/':
       CueMgr.prevCue()
     elif ch == '.' or ch == '>':
       CueMgr.nextScene()
@@ -221,9 +222,11 @@ if __name__ == '__main__':
     elif ch == 'y':
      OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 0
      OLA.send(OLA.lastDataSent)
-    # manual control of left track spots
+
+    # manual control of track spots
     else:
       spotLeft.onKey(ch)
       spotRight.onKey(ch) 
+      spotCenter.onKey(ch)
 
 
