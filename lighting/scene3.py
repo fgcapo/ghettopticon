@@ -1,6 +1,10 @@
 import sys, os, os.path, threading, ast, time
 from getch import getch
 from ola.ClientWrapper import ClientWrapper
+import microcontrollers as uc
+
+ucServos = uc.Servos('/dev/arbotix')
+ucLEDs = uc.LEDs('/dev/led')
 
 """class OlaThread(threading.Thread):
   def __init__(self):
@@ -165,6 +169,33 @@ class CueSequence(Cue):
       print ('-', cue.line.strip())
       cue.run()
 
+# return a dictionary of DMX, LED channels, and Servo angles
+def loadCueFile(filenameOnly):
+  try:
+    with openCueFile(filenameOnly) as f:
+      firstLine = f.readline()
+
+      # test for file version
+      if firstLine[0] == '[':
+        # just a list of dmx channel values
+        dmx = ast.literal_eval(firstLine)
+        return {'DMX':dmx}
+
+      json = ast.literal_eval(firstLine)
+      return
+      # TODO check version
+      """if json['version'] == 0:
+        DMX.set(json['DMX'])
+        ucLEDS.set(json['LightArm']['LEDs'])
+        ucServos.set(json['LightArm']['Servos'])
+      else:
+        print('Error file version unknown')"""
+
+  except BaseException as e:
+    print(e)
+    print('Hit SPACE to continue')
+    getch()
+
 # load scene from local file
 class CueLoad(Cue):
   def __init__(self, line):
@@ -177,25 +208,27 @@ class CueLoad(Cue):
     filename = restAfterWord(tokens[0], line)
     #print(filename)
     try:
-      with openCueFile(filename) as f:
-        text = f.readline()
-        #print(text)
-        self.target = ast.literal_eval(text)
+      self.target = loadCueFile(filename)
     except OSError as e:
       raise BaseException('Error loading file: ' + str(e))
 
   def run(self, immediate=False):
-    try:
+    #try:
       current = DMX.get()
+      target = self.target['DMX']
 
       # allow for value of -1 to not change current value
       for i in range(len(current)):
-        if self.target[i] >= 0: current[i] = self.target[i]
+        if target[i] >= 0: current[i] = target[i]
 
-      import pdb; pdb.set_trace()
-      DMX.setAndSend(0, current)
-    except:
-      raise BaseException('Error talking to OLA DMX server')
+      DMX.set(0, current)
+
+      # Light Arms
+      ucLEDS.set(self.target['LightArm']['LEDs'])
+      ucServos.set(self.target['LightArm']['Servos'])
+      
+    #except:
+    #  raise BaseException('Error talking to OLA DMX server')
 
     
   # fade from current scene to new scene
@@ -275,45 +308,32 @@ def cmdSave(tokens, line):
 
   filename = restAfterWord(tokens[0], line)
   dmx = str(DMX.get())
+  #lightArm = "{\n 'version': 0\n 'DMX': " + dmx + ",\n 'LightArm': {\n  'Servos': " + str(ucServos) + ",\n  'LEDs': " + str(ucLEDs) + "\n }\n}"
+  lightArm = "{'version': 0, 'DMX': " + dmx + ", 'LightArm': {'Servos': " + str(ucServos) + ", 'LEDs': " + str(ucLEDs) + "}}"
+  
   #print(data)
-  try:
-    with openCueFile(filename, 'w') as f: f.write(dmx)
-  except:
-    raise BaseException('Error saving file')
+#  try:
+  with openCueFile(filename, 'w') as f:
+      f.write(lightArm)
+      f.write('\n')
+#  except:
+#    raise BaseException('Error saving file')
 
 ############################################################################3
 # DMX slider data
 
 def clearScreen():
     #os.system('clear')
-    print("\x1b[2J\x1b[H", end='')
+    #print("\x1b[2J\x1b[H", end='')
+    return
 
 def fitServoRange(v): return max(212, min(812, v))
 def fitLEDRange(v): return max(0, min(255, v))
 
-class Servos:
-  def __init__(self):
-    self.anglesDict = {}
-    self.NumServos = 32
-
-    for i in range(1, self.NumServos+1):
-      self.set(i, 512)
-
-  def get(self, id): return self.anglesDict[id]
-
-  def set(self, idOrDict, angle=None): 
-    if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
-    elif isinstance(idOrDict, dict): self.anglesDict = anglesDict
-    else: raise BaseException('bad argument to Servos.setAngle')
-
-  def __str__(self): return str(self.anglesDict)
-
-ucServos = Servos()
-#ucLEDs = LEDs()
-
 class LightArmView:
-
   def __init__(self):
+    self.lineInputKey = 'c'
+
     # ID of base servo; will they all be the same dimension?
     # other servo will be ID+1
     self.armIDs = [19, 25, 27, 29, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -362,15 +382,18 @@ class LightArmView:
 
   # add increment to the angle of the X servo of the currently selected arm(s)
   def modY(self, inc):
-    if self.inSingleMode():
-      ids = [1 + self.armIDs[self.ixCursor]]
-    else:
-      ids = map(lambda x: 1 + self.armIDs[x], range(self.group(), self.PageWidth))
+    ids = map(lambda x: 1 + self.armIDs[x], self.selected())
     for id in ids:
       ucServos.set(id, fitServoRange(ucServos.get(id) + inc))
 
   def modI(self, inc):
-    pass
+    channel = self.ixCursor // self.PageWidth
+    ucLEDs.set(channel, fitLEDRange(ucLEDs.get(channel) + inc))
+
+  def handleLineInput(self, line):
+    tokens = line.split()
+    if len(tokens) == 0: return
+    cmd = tokens[0]
 
   def handleChar(self, ch): 
     ch = ch.lower()
@@ -394,7 +417,6 @@ class LightArmView:
       self.modI(1)
     elif ch == 'e':
       self.modI(-1)
-
 
     elif ch == '\x1b':
       seq = getch() + getch()
@@ -420,7 +442,6 @@ class LightArmView:
     return index // self.PageWidth == cursor // self.PageWidth
  
   def display(self):
-
     numArms = len(self.armIDs)
 
     def printHSep():
@@ -455,7 +476,7 @@ class LightArmView:
 
     print('i: |', end='')
     for i in range(numArms):
-      print('{0:^3}|'.format(i*16), end='')
+      print('{0:^3}|'.format(ucLEDs.get(i//self.PageWidth)), end='')
     print('')
 
     printHSep()
@@ -463,6 +484,7 @@ class LightArmView:
 
 class SliderView:
   def __init__(self): 
+    self.lineInputKey = 'c'
     self.ixCursor = 0
     self.NumChannels = DMX.NumChannels
     self.MinValue = 0
@@ -496,21 +518,13 @@ class SliderView:
     if len(tokens) == 0: return
     cmd = tokens[0]
 
-    if cmd == 'exit':
-      DMX.exit()
-      exit() 
-
     try:
-      if cmd == 'save':   cmdSave(tokens, line)
-      elif cmd == 'load': cmdCue(line, CueLoad)
-      elif cmd == 'fade': cmdCue(line, CueFade)
-
       # set a channel or a range of channels (inclusive) to a value
       # channels are 1-based index, so must subtract 1 before indexing
       # usage: (can take multiple arguments)
       # set<value> <channel>
       # set<value> <channel-channel>
-      elif cmd.startswith('set'):
+      if cmd.startswith('set'):
         value = int(cmd[3:])
         print(value)
         if value < self.MinValue or value > self.MaxValue:
@@ -582,6 +596,8 @@ currentView = lightArmView
 
 def programExit():
   DMX.exit()
+  ucServos.exit()
+  ucLEDs.exit()
   exit()
 
 
@@ -591,12 +607,34 @@ if __name__ == '__main__':
     currentView.display()
     ch = getch()
 
-    if ch == 'z':
+    if ch == 'z' or ch == 'Z':
       programExit()
     elif ch == '1':
       currentView = dmxView
     elif ch == '2':
       currentView = lightArmView
+
+    # every view can have a separate key to enter a command line of text
+    elif ch == currentView.lineInputKey:
+      print('\nEnter command: ', end='')
+      line = input()
+      tokens = line.split()
+
+      if len(tokens) == 0: continue
+      cmd = tokens[0]
+
+      # program-wide commands ?
+      try:
+        if cmd ==   'exit': programExit()
+        elif cmd == 'save': cmdSave(tokens, line)
+        elif cmd == 'load': cmdCue(line, CueLoad)
+        elif cmd == 'fade': cmdCue(line, CueFade)
+        else: currentView.handleLineInput()
+      except BaseException as e:
+        print(e)
+        getch()
+        programExit()
+
     else:
       currentView.handleChar(ch)
 
