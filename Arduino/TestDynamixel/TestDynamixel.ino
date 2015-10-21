@@ -144,8 +144,22 @@ void printError(int id) {
 void move(int pose_[], int poseSize) {    
 //  setSpeed(Speed);
 
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // hack in microcontroller for now:
+  // invert movement of servo 28
+  {
+    int id = 28 - FirstID;
+    if(id > 0 && poseSize > id) pose_[id] = 1024 - pose_[id];
+  }
+  
+  // ignore position 0
+  int count = 0;
+  for(int i = 0; i < poseSize; i++) {
+    if(pose_[i] > 0) count++;
+  }
+
   int temp;
-  int length = 4 + (poseSize * 3);   // 3 = id + pos(2byte)
+  int length = 4 + (count * 3);   // 3 = id + pos(2byte)
   int checksum = 254 + length + AX_SYNC_WRITE + 2 + AX_GOAL_POSITION_L;
   setTXall();
   ax12write(0xFF);
@@ -158,6 +172,8 @@ void move(int pose_[], int poseSize) {
   for(int i=0; i<poseSize; i++)
   {
       temp = pose_[i];
+      if(temp <= 0) continue;
+      
       int id = idFromIndex(i);
       
       checksum += (temp&0xff) + (temp>>8) + id;
@@ -169,112 +185,102 @@ void move(int pose_[], int poseSize) {
   setRX(0);
 }
 
-void cmdMove() {
-  int poses[NumServos];
-  int i;
-  
-  for(i = 0; i < NumServos; i++) {
-
-    char *arg = CmdMgr.next();
-    if(arg == NULL) break;
-    
-    char *end;  
-    int angle = strtol(arg, &end, 10);
-    if(*end != '\0' || angle < 200 || angle > 812) {
-      return;
-    }
-    
-    poses[i] = angle;
-    Serial.println(angle);
-  }
-  
-  move(poses, i);
-  
-  Serial.print("Moving ");
-  Serial.print(i);
-  Serial.println(" servos.");
-}
-
-//servo serial command format:
-//"s <id>:<angle> <id>:<angle> ... \n"
-//angle is 0 to 1024? or 1 to 1023?
+// Accept one of two types of rguments: either a list of angles starting from FirstID,
+// or a list of id:angle pairs.
 // We shall constrain the angle to 200 to 824, and assume and consider 0 a no-op.
-void cmdSetServoPosition() {
-  const char *FormatErrorMsg = "Error: takes pairs in the form <ID>:<angle>";
+void cmdMove() {
+  // see what kind of arguments we have
+  char *arg = CmdMgr.next();
+  if(arg == NULL) return;
 
-  struct Tuple { int id, angle; };
+  // if the first argument doesn't have a colon, consider the arguments a
+  // list of angles starting from FirstID
+  if(strchr(arg, ':') == NULL) {  
+    int poses[NumServos];
+    int i;
+
+    for(i = 0; i < NumServos; i++) {      
+      char *end;  
+      int angle = strtol(arg, &end, 10);
+      if(*end != '\0' || angle < 200 || angle > 812) {
+        Serial.println("Angles must be between 200 and 812");
+        return;
+      }
+      
+      poses[i] = angle;
+      Serial.println(angle);
   
-  const int maxAngles = NumServos;
-  int angles[maxAngles];
-  int count = 0;
-
-  for(int i = 0; i < maxAngles; i++) angles[0] = 0;
-  
-  while(char *arg = CmdMgr.next()) {
-    int id, angle;
-
-    char *sID = strtok(arg, ":");
-    if(sID == NULL) {
-      printlnError(FormatErrorMsg);
-      return;
-    }
-    if(!toInt(sID, &id) || id < 1 || id > 127) {
-      printlnError("Error: ID must be between 1 and 127");
-      return;
-    }
-
-    char *sAngle = strtok(NULL, ":");
-    if(sAngle == NULL) {
-      printlnError(FormatErrorMsg);
-      return;
-    }
-    //contrain from -90 to 90 degrees
-    if(!toInt(sAngle, &angle) || angle < 200 || angle > 824) {
-      printlnError("Error: angle must be between 200 and 824");
-      return;
+      arg = CmdMgr.next();
+      if(arg == NULL) break;
     }
     
-    angles[count].id = id;
-    angles[count].angle = angle;
-    count++;
-  }
-  
-  if(count == 0) {
-    printlnError("Error: no arguments");
-    return;
-  }
-  
-  if(relaxed) {
-    relaxed = false;
-    Servos.readPose();
+    move(poses, i);    
+    Serial.print("Moving ");
+    Serial.print(i);
+    Serial.println(" servos.");
   }
 
-  long msLargestTimeToMove = 0;
-  for(int i = 0; i < count; i++) {
-    int id = angles[i].id;
-    int newAngle = angles[i].angle;
-    int curAngle = Servos.getCurPose(id);
-    
-    if(curAngle < 1 || curAngle > 2000) continue;
-    
-    long time = abs(curAngle - newAngle) * gMaxSpeedInv;
-    msLargestTimeToMove = max(msLargestTimeToMove, time);
-    
-    printInfo("moving id ");
-    printInfo(id);
-    printInfo(" from ");
-    printInfo(curAngle);
-    printInfo(" to ");
-    printlnInfo(newAngle);
+  // arguments are index:angle pairs
+  else {   
+    const char *FormatErrorMsg = "Error: takes pairs in the form <ID>:<angle>";
 
-    Servos.setNextPose(id, newAngle);
-  }
-
-  move(poses
+    // array of angles, indexed by (ID - 1)
+    // angle of 0 is noop
+    const int maxAngles = 128;
+    int angles[maxAngles];
+    int count = 0, maxID = 0;
   
-  printAck("Longest movement will take ");
-  printAck(msLargestTimeToMove);
-  printlnAck(" ms");  
+    for(int i = 0; i < maxAngles; i++) angles[i] = 0;
+    
+    do {
+      char *end;
+
+      char *sID = strtok(arg, ":");
+      if(sID == NULL) {
+        printlnError(FormatErrorMsg);
+        return;
+      }
+      int id = strtol(sID, &end, 10);
+      if(*end != '\0' || id < 1 || id > 127) {
+        printlnError("Error: ID must be between 1 and 127");
+        return;
+      }
+  
+      char *sAngle = strtok(NULL, ":");
+      if(sAngle == NULL) {
+        printlnError(FormatErrorMsg);
+        return;
+      }
+      //contrain from -90 to 90 degrees
+      int angle = strtol(sAngle, &end, 10);
+      if(*end != '\0' || angle < 200 || angle > 824) {
+        printlnError("Error: angle must be between 200 and 824");
+        return;
+      }
+      
+      angles[id - 1] = angle;
+      maxID = max(maxID, id);
+      count++;
+      
+    } while(arg = CmdMgr.next());
+
+    // maxID == array length used, because IDs start at 1
+    // temporarily alter FirstID to be 1
+    int prevFirstID = FirstID;
+    FirstID = 1;
+    move(angles, maxID);
+    FirstID = prevFirstID;
+    
+    /*for(int i = 0; i < maxID; i++) {
+      Serial.print(angles[i]);
+      Serial.print(", ");
+    }
+    Serial.println("");*/
+    
+    Serial.print("Moving ");
+    Serial.print(count);
+    Serial.println(" servos.");
+  }
 }
 
 int Positions[] = {490, 500, 512, 612, 712};
@@ -349,11 +355,11 @@ void setup() {
 void loop() {
   CmdMgr.readSerial();
 
-  setSpeed(Speed);
-  delay(1000);
+  /*setSpeed(Speed);
+  delay(500);
   loadPose(0);
   
   setSpeed(Speed);
-  delay(1000);
-  loadPose(2);
+  delay(500);
+  loadPose(4);*/
 }
