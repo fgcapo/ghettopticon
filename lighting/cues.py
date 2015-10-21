@@ -3,7 +3,7 @@ from getch import getch
 import scene3 as scene
 from scene3 import OLA, restAfterWord, Cue
 
-CuesFilename = 'cuesheet2.txt'
+CuesFilename = 'cuesheet3.txt'
 
 def openCueFile(filenameOnly, mode):
   return open('scenes/' + filenameOnly, mode)
@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
   spotLeft =  TrackSpot(162, 161, 166, 'w', 's', 'a', 'd', 'e', 'q')
   spotRight = TrackSpot(171, 170, 175, '8', '5', '6', '4', '9', '7')
-  spotCenter = TrackSpot(194, 193, 198, 'g', 'b', 'n', 'v', 'f', 'h')
+  spotCenter = TrackSpot(194, 193, 198, 'g', 'b', 'v', 'n', 'h', 'f')
 
   while 1:
     ch = getch().lower()
