@@ -288,6 +288,179 @@ def clearScreen():
     #os.system('clear')
     print("\x1b[2J\x1b[H", end='')
 
+def fitServoRange(v): return max(212, min(812, v))
+def fitLEDRange(v): return max(0, min(255, v))
+
+class Servos:
+  def __init__(self):
+    self.anglesDict = {}
+    self.NumServos = 32
+
+    for i in range(1, self.NumServos+1):
+      self.set(i, 512)
+
+  def get(self, id): return self.anglesDict[id]
+
+  def set(self, idOrDict, angle=None): 
+    if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
+    elif isinstance(idOrDict, dict): self.anglesDict = anglesDict
+    else: raise BaseException('bad argument to Servos.setAngle')
+
+  def __str__(self): return str(self.anglesDict)
+
+ucServos = Servos()
+#ucLEDs = LEDs()
+
+class LightArmView:
+
+  def __init__(self):
+    # ID of base servo; will they all be the same dimension?
+    # other servo will be ID+1
+    self.armIDs = [19, 25, 27, 29, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    self.PageWidth = 4    
+    self.ixCursor = 0
+    
+    self.mode = 0   # index into self.Modes
+
+  # modify one arm or a group of 4 at a time
+  Modes = ['individual', 'group']
+
+  def toggleMode(self):
+    self.mode = (self.mode + 1 ) % len(self.Modes)
+  def inSingleMode(self):
+    return self.mode == 0
+
+  # retrieve angle based on arm index on screen
+  # type must be 'x' or 'y'
+  def getAngle(self, type, index=None):
+    if index is None: index = self.ixCursor
+    id = self.armIDs[index]
+    if type == 'y': id += 1
+    elif type != 'x': raise BaiseException('bad dimension')
+    return ucServos.get(id)
+
+  # returns a list of the selected indices
+  def selected(self):
+    if self.inSingleMode():
+      return [self.ixCursor]
+    else:
+      return range(self.group(), self.PageWidth)
+     
+
+  def idsGroupX(self):
+      return map(lambda x: self.armIDs[x], self.selected()) 
+
+  def idsGroupY(self):
+      return map(lambda x: 1 + self.armIDs[x], self.selected())
+
+   # add increment to the angle of the X servo of the currently selected arm(s)
+  def modX(self, inc):
+    ids = map(lambda x: self.armIDs[x], self.selected())
+    for id in ids:
+      ucServos.set(id, fitServoRange(ucServos.get(id) + inc))
+
+  # add increment to the angle of the X servo of the currently selected arm(s)
+  def modY(self, inc):
+    if self.inSingleMode():
+      ids = [1 + self.armIDs[self.ixCursor]]
+    else:
+      ids = map(lambda x: 1 + self.armIDs[x], range(self.group(), self.PageWidth))
+    for id in ids:
+      ucServos.set(id, fitServoRange(ucServos.get(id) + inc))
+
+  def modI(self, inc):
+    pass
+
+  def handleChar(self, ch): 
+    ch = ch.lower()
+    if ch == 'x':
+      self.toggleMode() 
+    if ch == '0':
+      for i in self.selected():
+        ucServos.set(self.armIDs[i], 512)
+        ucServos.set(1 + self.armIDs[i], 512)
+      #self.modX(512-self.getAngle('x'))
+      #self.modY(512-self.getAngle('y'))
+    elif ch == 'w':
+      self.modY(1)
+    elif ch == 's':
+      self.modY(-1)
+    elif ch == 'd':
+      self.modX(1)
+    elif ch == 'a':
+      self.modX(-1)
+    elif ch == 'q':
+      self.modI(1)
+    elif ch == 'e':
+      self.modI(-1)
+
+
+    elif ch == '\x1b':
+      seq = getch() + getch()
+      if seq == '[C': # left arrow
+        if self.inSingleMode(): self.ixCursor += 1
+        else: self.ixCursor = self.ixCursor - self.ixCursor % self.PageWidth + self.PageWidth
+        self.ixCursor = min(len(self.armIDs)-1, self.ixCursor)
+      elif seq == '[D': # right arrow
+        if self.inSingleMode(): self.ixCursor -= 1
+        else: self.ixCursor = self.ixCursor - self.ixCursor % self.PageWidth - self.PageWidth
+        self.ixCursor = max(0, self.ixCursor)
+      elif seq == '[A': pass # up arrow
+      elif seq == '[B': pass # down arrow
+
+  # return starting index of group that cursor is in
+  def group(self, cursor=None):
+    if cursor is None: cursor = self.ixCursor
+    return cursor - cursor % self.PageWidth
+
+  # sees whether index is in cursor's group
+  def inGroup(self, index, cursor=None):
+    if cursor is None: cursor = self.ixCursor
+    return index // self.PageWidth == cursor // self.PageWidth
+ 
+  def display(self):
+
+    numArms = len(self.armIDs)
+
+    def printHSep():
+      print('   |', end='')
+      if self.inSingleMode():
+        for i in range(numArms):
+          if i == self.ixCursor: print('===|', end='')
+          else: print('---|', end='')
+      else:
+        for i in range(numArms):
+          if self.inGroup(i):
+            if self.inGroup(i+1, i): print('====', end='')
+            else: print('===|', end='')
+          else: print('---|', end='')
+      print('')
+
+    printHSep()
+
+    print('x: |', end='')
+    for i in range(numArms):
+      print('{0:^3}|'.format(self.getAngle('x', i)), end='')
+    print('')
+
+    printHSep() 
+     
+    print('y: |', end='')
+    for i in range(numArms):
+      print('{0:^3}|'.format(self.getAngle('y', i)), end='')
+    print('')
+
+    printHSep()
+
+    print('i: |', end='')
+    for i in range(numArms):
+      print('{0:^3}|'.format(i*16), end='')
+    print('')
+
+    printHSep()
+
+
 class SliderView:
   def __init__(self): 
     self.ixCursor = 0
@@ -404,8 +577,8 @@ class SliderView:
           self.ixCursor = max(0, ixPageStart - self.PageWidth)
    
 dmxView = SliderView()
-lightArmView = 
-currentView = dmxView
+lightArmView = LightArmView() 
+currentView = lightArmView
 
 def programExit():
   DMX.exit()
@@ -414,10 +587,11 @@ def programExit():
 
 if __name__ == '__main__':
   while 1:
+    clearScreen()
     currentView.display()
     ch = getch()
 
-    if char == 'z':
+    if ch == 'z':
       programExit()
     elif ch == '1':
       currentView = dmxView
