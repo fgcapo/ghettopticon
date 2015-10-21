@@ -71,7 +71,8 @@ class DmxChannels:
     
     # sends to OLA if there has been a change    
     def send(self):
-        if not self.client or not self.dataChanged: return
+        if not self.client: return
+        #if not self.dataChanged: return
         self.dataChanged = False
         self.client.SendDmx(1, self.data)
         
@@ -148,6 +149,36 @@ def restAfterWord(word, line):
 def openCueFile(filenameOnly, mode='r'):
   return open('scenes/' + filenameOnly, mode)
 
+# return a dictionary of DMX, LED channels, and Servo angles
+def loadCueFile(filenameOnly):
+  try:
+    with openCueFile(filenameOnly) as f:
+      text = f.read()
+      print(text)
+
+      # test for file version
+      if text[0] == '[':
+        # just a list of dmx channel values
+        dmx = ast.literal_eval(text)
+        return {'DMX':dmx}
+
+      json = ast.literal_eval(text)
+      #print(json)
+      return json
+
+      # TODO check version
+      """if json['version'] == 0:
+        DMX.set(json['DMX'])
+        ucLEDs.set(json['LightArm']['LEDs'])
+        ucServos.set(json['LightArm']['Servos'])
+      else:
+        print('Error file version unknown')"""
+
+  except ArithmeticError as e:
+    print(e)
+    print('Hit SPACE to continue')
+    getch()
+
 ########################################################
 # cue commands
 
@@ -169,33 +200,6 @@ class CueSequence(Cue):
       print ('-', cue.line.strip())
       cue.run()
 
-# return a dictionary of DMX, LED channels, and Servo angles
-def loadCueFile(filenameOnly):
-  try:
-    with openCueFile(filenameOnly) as f:
-      firstLine = f.readline()
-
-      # test for file version
-      if firstLine[0] == '[':
-        # just a list of dmx channel values
-        dmx = ast.literal_eval(firstLine)
-        return {'DMX':dmx}
-
-      json = ast.literal_eval(firstLine)
-      return
-      # TODO check version
-      """if json['version'] == 0:
-        DMX.set(json['DMX'])
-        ucLEDS.set(json['LightArm']['LEDs'])
-        ucServos.set(json['LightArm']['Servos'])
-      else:
-        print('Error file version unknown')"""
-
-  except BaseException as e:
-    print(e)
-    print('Hit SPACE to continue')
-    getch()
-
 # load scene from local file
 class CueLoad(Cue):
   def __init__(self, line):
@@ -209,7 +213,7 @@ class CueLoad(Cue):
     #print(filename)
     try:
       self.target = loadCueFile(filename)
-    except OSError as e:
+    except BaseException as e:
       raise BaseException('Error loading file: ' + str(e))
 
   def run(self, immediate=False):
@@ -221,10 +225,10 @@ class CueLoad(Cue):
       for i in range(len(current)):
         if target[i] >= 0: current[i] = target[i]
 
-      DMX.set(0, current)
+      DMX.setAndSend(0, current)
 
       # Light Arms
-      ucLEDS.set(self.target['LightArm']['LEDs'])
+      ucLEDs.set(0, self.target['LightArm']['LEDs'])
       ucServos.set(self.target['LightArm']['Servos'])
       
     #except:
@@ -308,13 +312,13 @@ def cmdSave(tokens, line):
 
   filename = restAfterWord(tokens[0], line)
   dmx = str(DMX.get())
-  #lightArm = "{\n 'version': 0\n 'DMX': " + dmx + ",\n 'LightArm': {\n  'Servos': " + str(ucServos) + ",\n  'LEDs': " + str(ucLEDs) + "\n }\n}"
-  lightArm = "{'version': 0, 'DMX': " + dmx + ", 'LightArm': {'Servos': " + str(ucServos) + ", 'LEDs': " + str(ucLEDs) + "}}"
+  text = "{\n 'version': 0,\n 'DMX': " + dmx + ",\n 'LightArm': {\n  'Servos': " + str(ucServos) + ",\n  'LEDs': " + str(ucLEDs) + "\n }\n}"
+  #text = "{'version': 0, 'DMX': " + dmx + ", 'LightArm': {'Servos': " + str(ucServos) + ", 'LEDs': " + str(ucLEDs) + "}}"
   
-  #print(data)
+  print(text)
 #  try:
   with openCueFile(filename, 'w') as f:
-      f.write(lightArm)
+      f.write(text)
       f.write('\n')
 #  except:
 #    raise BaseException('Error saving file')
@@ -324,11 +328,22 @@ def cmdSave(tokens, line):
 
 def clearScreen():
     #os.system('clear')
-    #print("\x1b[2J\x1b[H", end='')
+   # print("\x1b[2J\x1b[H", end='')
     return
 
 def fitServoRange(v): return max(212, min(812, v))
 def fitLEDRange(v): return max(0, min(255, v))
+
+class Increment:
+  def __init__(self, possibilities):
+    self.modes = possibilities
+    if self.modes == None: self.modes = [1, 5, 20]
+    self.current = 0    #index into possibilities
+
+  def __call__(self): return self.modes[self.current]
+  def prev(self): self.current = max(0, min(len(self.modes)-1, self.current - 1))
+  def next(self): self.current = max(0, min(len(self.modes)-1, self.current + 1))
+    
 
 class LightArmView:
   def __init__(self):
@@ -336,12 +351,16 @@ class LightArmView:
 
     # ID of base servo; will they all be the same dimension?
     # other servo will be ID+1
-    self.armIDs = [19, 25, 27, 29, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    self.armIDs = [25, 29, 27, 17]#, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    for id in self.armIDs:
+      ucServos.set(id, 512)
+      ucServos.set(id+1, 512)
 
     self.PageWidth = 4    
     self.ixCursor = 0
     
     self.mode = 0   # index into self.Modes
+    self.inc = Increment([1, 5, 20])
 
   # modify one arm or a group of 4 at a time
   Modes = ['individual', 'group']
@@ -357,7 +376,7 @@ class LightArmView:
     if index is None: index = self.ixCursor
     id = self.armIDs[index]
     if type == 'y': id += 1
-    elif type != 'x': raise BaiseException('bad dimension')
+    elif type != 'x': raise BaseException('bad dimension')
     return ucServos.get(id)
 
   # returns a list of the selected indices
@@ -366,8 +385,24 @@ class LightArmView:
       return [self.ixCursor]
     else:
       return range(self.group(), self.PageWidth)
-     
 
+  def selectedIDs(self):
+    ids = []
+    for i in self.selected():
+      ids.append(self.armIDs[i])
+      ids.append(self.armIDs[i] + 1)
+    return ids
+     
+  # return starting index of group that cursor is in
+  def group(self, cursor=None):
+    if cursor is None: cursor = self.ixCursor
+    return cursor - cursor % self.PageWidth
+
+  # sees whether index is in cursor's group
+  def inGroup(self, index, cursor=None):
+    if cursor is None: cursor = self.ixCursor
+    return index // self.PageWidth == cursor // self.PageWidth
+ 
   def idsGroupX(self):
       return map(lambda x: self.armIDs[x], self.selected()) 
 
@@ -399,24 +434,39 @@ class LightArmView:
     ch = ch.lower()
     if ch == 'x':
       self.toggleMode() 
+    if ch == 'r': 
+      ucServos.relax(self.selectedIDs())
     if ch == '0':
       for i in self.selected():
         ucServos.set(self.armIDs[i], 512)
         ucServos.set(1 + self.armIDs[i], 512)
-      #self.modX(512-self.getAngle('x'))
-      #self.modY(512-self.getAngle('y'))
+    if ch == '9':
+      for i in self.selected():
+        ucServos.set(self.armIDs[i], 300)
+        ucServos.set(1 + self.armIDs[i], 300)
+    if ch == '8':
+      for i in self.selected():
+        ucServos.set(self.armIDs[i], 700)
+        ucServos.set(1 + self.armIDs[i], 700)
+
     elif ch == 'w':
-      self.modY(1)
+      self.modY(self.inc())
     elif ch == 's':
-      self.modY(-1)
-    elif ch == 'd':
-      self.modX(1)
+      self.modY(-self.inc())
     elif ch == 'a':
-      self.modX(-1)
+      self.modX(self.inc())
+    elif ch == 'd':
+      self.modX(-self.inc())
     elif ch == 'q':
-      self.modI(1)
+      self.modI(self.inc())
     elif ch == 'e':
-      self.modI(-1)
+      self.modI(-self.inc())
+
+    elif ch == '<' or ch == ',':
+      self.inc.prev()
+    elif ch == '>' or ch == '.':
+      self.inc.next()
+
 
     elif ch == '\x1b':
       seq = getch() + getch()
@@ -431,16 +481,7 @@ class LightArmView:
       elif seq == '[A': pass # up arrow
       elif seq == '[B': pass # down arrow
 
-  # return starting index of group that cursor is in
-  def group(self, cursor=None):
-    if cursor is None: cursor = self.ixCursor
-    return cursor - cursor % self.PageWidth
 
-  # sees whether index is in cursor's group
-  def inGroup(self, index, cursor=None):
-    if cursor is None: cursor = self.ixCursor
-    return index // self.PageWidth == cursor // self.PageWidth
- 
   def display(self):
     numArms = len(self.armIDs)
 
@@ -563,12 +604,7 @@ class SliderView:
 
       ch = ch.lower()
 
-      if ch == 'c':
-        print('\nEnter command: ', end='')
-        line = input().strip()
-        if len(line): self.handleLineInput(line)
-
-      elif ch == '0':
+      if ch == '0':
         DMX.setAndSend(self.ixCursor, self.MinValue)
       elif ch == '9':
         DMX.setAndSend(self.ixCursor, self.MaxValue)
@@ -629,8 +665,8 @@ if __name__ == '__main__':
         elif cmd == 'save': cmdSave(tokens, line)
         elif cmd == 'load': cmdCue(line, CueLoad)
         elif cmd == 'fade': cmdCue(line, CueFade)
-        else: currentView.handleLineInput()
-      except BaseException as e:
+        else: currentView.handleLineInput(line)
+      except ArithmeticError as e:
         print(e)
         getch()
         programExit()

@@ -3,6 +3,8 @@ import struct
 import threading
 import time
 
+NumArrays = 4
+
 # returns a blocking read object
 def openSerial(path, baud=38400):
     uc = None
@@ -90,36 +92,37 @@ class LEDs(SerialThread):
         SerialThread.__init__(self, path)        
         self.MinValue = 0
         self.MaxValue = 255
-        self.NumChannels = 4
-        self.values = [255] * self.NumChannels
+        self.NumChannels = NumArrays
+        self.values = [self.MinValue] * self.NumChannels
 
     def __str__(self):
       return str(self.values)
 
     def handleLine(self, line):
-        print(line)
+        #print(line)
+        return
 
     def get(self, channel): return self.values[channel]
-    def set(self, channel, value):
-      if isinstance(channel, int): self.values[channel] = value
 
-#ucLEDs = LEDs('/dev/led')
-
-# arguments are PWM values 0-255
-def setLEDs(*values):
-    cmd = 'pwm'
-    for v in values:
-        cmd += ' ' + str(v)
-
-    cmd += '\n'
-    #print(cmd)
-    ucLEDs.write(str.encode(cmd))
-
-def setOneLEDInvFrac(intensity):
-    # board takes intensity inverted
-    chan1 = int(255 * (1.0 - intensity))
-    setLEDs(chan1)
+    # arguments are PWM values 0-255
+    def set(self, channel, values):
+      if isinstance(values, int): values = [values]
     
+      for v in values:
+        self.values[channel] = v
+        channel += 1
+
+      cmd = 'pwm'
+      for v in self.values: cmd += ' ' + str(255-v)
+      cmd += '\n'
+
+      self.write(str.encode(cmd))
+
+    #def setOneLEDInvFrac(intensity):
+        # board takes intensity inverted
+        #chan1 = int(255 * (1.0 - intensity))
+        #setLEDs(chan1)
+        
 ########################################################################
 # dynamixel servos
 class Servos(SerialThread):
@@ -128,16 +131,16 @@ class Servos(SerialThread):
         self.mode = None
         self.numLinesToFollow = 0
         self.anglesDict = {}
-        self.NumServos = 32
 
-        for i in range(1, self.NumServos+1):
-            self.set(i, 512)
+        #self.NumServos = 4 * NumArrays
+        #for i in range(1, self.NumServos+1):
+        #    self.set(i, 512)
 
     def get(self, id): return self.anglesDict[id]
 
     def set(self, idOrDict, angle=None):
       if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
-      elif isinstance(idOrDict, dict): self.anglesDict = anglesDict
+      elif isinstance(idOrDict, dict): self.anglesDict = idOrDict
       else: raise BaseException('bad argument to Servos.setAngle')
       self.setServoPos()
 
@@ -168,7 +171,7 @@ class Servos(SerialThread):
                 print(self.anglesDict)
                 self.mode = None
                 
-        else: print(line)
+        #else: print(line)
 
     # argument is a dictionary of id:angle
     # angles are 0-1023; center is 512; safe angle range is 200-824
@@ -201,12 +204,24 @@ class Servos(SerialThread):
         # text protocol of id:angle pairs
         else:
             cmd = 's'
-            for id,angle in anglesDict.items():
+            for id,angle in self.anglesDict.items():
                 cmd += ' ' + str(id) + ':' + str(angle)
 
             cmd += '\n'
             #print(cmd)
             self.write(str.encode(cmd))
+
+    # takes one or a list of IDs
+    # relaxes all if IDs is None
+    def relax(self, IDs):
+      if isinstance(IDs, int): IDs = [IDs]
+      elif IDs is None: IDs = self.anglesDict.keys()
+
+      cmd = 'relax'
+      for id in IDs: cmd += ' ' + str(id)
+      print(cmd)
+      cmd += '\n'
+      self.write(str.encode(cmd))
 
     def moveAllServos(self, pos, binary=False):
         anglesDict = {}
