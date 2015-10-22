@@ -213,10 +213,10 @@ if __name__ == '__main__':
 
     # track spots off or on
     elif ch == 't':
-      for c in [197, 165, 174]: DMX.set(c, 255)
+      for c in [197, 165, 174]: DMX.setAndSend(c, 255)
       DMX.send()
     elif ch == 'y':
-      for c in [197, 165, 174]: DMX.set(c, 0)
+      for c in [197, 165, 174]: DMX.setAndSend(c, 0)
       DMX.send()
 
     # manual control of track spots

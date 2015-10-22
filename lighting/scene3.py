@@ -1,7 +1,7 @@
 import sys, os, os.path, threading, ast, time
 from getch import getch
 from ola.ClientWrapper import ClientWrapper
-import microcontrollers as uc
+import lightarm as uc
 
 ucServos = uc.Servos('/dev/arbotix')
 ucLEDs = uc.LEDs('/dev/led')
@@ -61,6 +61,7 @@ class DmxChannels:
             self.client = self.wrapper.Client()
         except:
             print("Error: couldn't connect to OLA server")
+            getch()
             
     def exit(self):
       pass
@@ -325,7 +326,7 @@ def cmdSave(tokens, line):
 
 def clearScreen():
     #os.system('clear')
-    #print("\x1b[2J\x1b[H", end='')
+    print("\x1b[2J\x1b[H", end='')
     return
 
 def fitServoRange(v): return max(212, min(812, v))
@@ -478,8 +479,11 @@ class LightArmView:
       elif seq == '[A': pass # up arrow
       elif seq == '[B': pass # down arrow
 
+  def onFocus(self):
+    pass
 
   def display(self):
+    clearScreen()
     numArms = len(self.armIDs)
 
     def printHSep(firstColBlank=True):
@@ -533,6 +537,9 @@ class SliderView:
 
     self.PageWidth = 16
  
+  def onFocus(self):
+    pass
+
   def display(self):
       clearScreen()
       ixCursorInPage = self.ixCursor % self.PageWidth
@@ -630,19 +637,17 @@ class SliderView:
           getch() # eat trailing ~
           self.ixCursor = max(0, ixPageStart - self.PageWidth)
 
-class CueMgr:
+
+class CueView:
   def __init__(self):
     self.lineInputKey = 'c'
-  def display(self):
-    print('Cue Sheet mode coming soon')
-  def handleChar(self):
-    pass
-  def handleLineInput(self):
-    pass
- 
+  def onFocus(self): pass
+  def display(self): pass
+  def handleChar(self): pass
+
 dmxView = SliderView()
 lightArmView = LightArmView() 
-cueSheetView = CueMgr()
+cueView = CueView()
 
 currentView = dmxView
 
@@ -654,17 +659,19 @@ def programExit():
 
 
 if __name__ == '__main__':
+  clearScreen()
+  currentView.onFocus()
+
   while 1:
-    clearScreen()
     currentView.display()
     ch = getch()
 
     if ch == 'z' or ch == 'Z':
       programExit()
 
-    elif ch == '1': currentView = cueSheetView
-    elif ch == '2': currentView = dmxView
-    elif ch == '3': currentView = lightArmView
+    elif ch == '1': currentView = cueSheetView; currentView.onFocus()
+    elif ch == '2': currentView = dmxView;      currentView.onFocus()
+    elif ch == '3': currentView = lightArmView; currentView.onFocus()
 
     # every view can have a separate key to enter a command line of text
     elif ch == currentView.lineInputKey:

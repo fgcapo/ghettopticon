@@ -232,5 +232,3 @@ class Servos(SerialThread):
     def readServos(self):
         self.write(b'r\n')
 
-#ucServos = Servos('/dev/arbotix')
-
