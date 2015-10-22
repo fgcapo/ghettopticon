@@ -154,7 +154,6 @@ def loadCueFile(filenameOnly):
   try:
     with openCueFile(filenameOnly) as f:
       text = f.read()
-      print(text)
 
       # test for file version
       if text[0] == '[':
@@ -209,9 +208,8 @@ class CueLoad(Cue):
     if len(tokens) < 2:
       raise BaseException('no filename')
 
-    filename = restAfterWord(tokens[0], line)
-    #print(filename)
     try:
+      filename = restAfterWord(tokens[0], line)
       self.target = loadCueFile(filename)
     except BaseException as e:
       raise BaseException('Error loading file: ' + str(e))
@@ -228,8 +226,11 @@ class CueLoad(Cue):
       DMX.setAndSend(0, current)
 
       # Light Arms
-      ucLEDs.set(0, self.target['LightArm']['LEDs'])
-      ucServos.set(self.target['LightArm']['Servos'])
+      try:
+        ucLEDs.set(0, self.target['LightArm']['LEDs'])
+        ucServos.set(self.target['LightArm']['Servos'])
+      except BaseException as e:
+        pass
       
     #except:
     #  raise BaseException('Error talking to OLA DMX server')
@@ -255,31 +256,27 @@ class CueFade(Cue):
       filename = restAfterWord(tokens[0], line)
 
     try:      
-      with openCueFile(filename) as f:
-        text = f.readline()
-        #print(text)
-        self.target = ast.literal_eval(text)
+      self.target = loadCueFile(filename)
     except (OSError, IOError) as e:
       raise BaseException('Error loading file: ' + str(e))
  
-  def run(self, immediate=False):
-    try:
+  def run(self):
+    #try:
       timestep = .05
       printPeriodPeriod = .25
       printPeriodTimestepCount = printPeriodPeriod / timestep
 
+      target = self.target['DMX']
       current = DMX.get()
       vel = [0] * len(current)
 
-      if immediate:
-        OLA.send(self.target)
-        return
-
       # calculate delta for each timestep
       # -1 means don't change
-      for i in range(len(self.target)):
-        if self.target[i] >= 0:
-          vel[i] = (self.target[i] - current[i]) * (timestep / self.period)
+      for i in range(len(target)):
+        if target[i] >= 0:
+          vel[i] = (target[i] - current[i]) * (timestep / self.period)
+      #print(target)
+      #print(current)
 
       print('                 fading for', self.period, 'seconds..', end='', flush=True)
 
@@ -292,8 +289,8 @@ class CueFade(Cue):
         time.sleep(timestep)
 
       print('DONE')
-    except:
-      raise BaseException('Error talking to OLA DMX server')
+    #except:
+    #  raise BaseException('Error talking to OLA DMX server')
     # TODO other exceptions having to do with the fade math
 
 
@@ -328,7 +325,7 @@ def cmdSave(tokens, line):
 
 def clearScreen():
     #os.system('clear')
-   # print("\x1b[2J\x1b[H", end='')
+    #print("\x1b[2J\x1b[H", end='')
     return
 
 def fitServoRange(v): return max(212, min(812, v))
@@ -485,8 +482,10 @@ class LightArmView:
   def display(self):
     numArms = len(self.armIDs)
 
-    def printHSep():
-      print('   |', end='')
+    def printHSep(firstColBlank=True):
+      if firstColBlank: print('   |', end='')
+      else: print('---|', end='')
+
       if self.inSingleMode():
         for i in range(numArms):
           if i == self.ixCursor: print('===|', end='')
@@ -499,7 +498,8 @@ class LightArmView:
           else: print('---|', end='')
       print('')
 
-    printHSep()
+    print('   Light Arm View')
+    printHSep(False)
 
     print('x: |', end='')
     for i in range(numArms):
@@ -520,7 +520,7 @@ class LightArmView:
       print('{0:^3}|'.format(ucLEDs.get(i//self.PageWidth)), end='')
     print('')
 
-    printHSep()
+    printHSep(False)
 
 
 class SliderView:
@@ -537,6 +537,10 @@ class SliderView:
       clearScreen()
       ixCursorInPage = self.ixCursor % self.PageWidth
       ixPageStart = self.ixCursor - ixCursorInPage
+
+      print('                           DMX View')
+      for i in range(self.PageWidth): print('----', end='')
+      print('')
 
       # channel values
       for i in range(ixPageStart, ixPageStart + self.PageWidth):
@@ -625,10 +629,22 @@ class SliderView:
         elif seq == '[6': # page down
           getch() # eat trailing ~
           self.ixCursor = max(0, ixPageStart - self.PageWidth)
-   
+
+class CueMgr:
+  def __init__(self):
+    self.lineInputKey = 'c'
+  def display(self):
+    print('Cue Sheet mode coming soon')
+  def handleChar(self):
+    pass
+  def handleLineInput(self):
+    pass
+ 
 dmxView = SliderView()
 lightArmView = LightArmView() 
-currentView = lightArmView
+cueSheetView = CueMgr()
+
+currentView = dmxView
 
 def programExit():
   DMX.exit()
@@ -645,10 +661,10 @@ if __name__ == '__main__':
 
     if ch == 'z' or ch == 'Z':
       programExit()
-    elif ch == '1':
-      currentView = dmxView
-    elif ch == '2':
-      currentView = lightArmView
+
+    elif ch == '1': currentView = cueSheetView
+    elif ch == '2': currentView = dmxView
+    elif ch == '3': currentView = lightArmView
 
     # every view can have a separate key to enter a command line of text
     elif ch == currentView.lineInputKey:

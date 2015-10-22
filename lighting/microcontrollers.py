@@ -113,7 +113,7 @@ class LEDs(SerialThread):
         channel += 1
 
       cmd = 'pwm'
-      for v in self.values: cmd += ' ' + str(255-v)
+      for v in self.values: cmd += ' ' + str(v)
       cmd += '\n'
 
       self.write(str.encode(cmd))

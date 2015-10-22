@@ -1,7 +1,7 @@
-import time
+import time, threading
 from getch import getch
 import scene3 as scene
-from scene3 import OLA, restAfterWord, Cue
+from scene3 import restAfterWord, Cue, DMX, programExit
 
 CuesFilename = 'cuesheet3.txt'
 
@@ -176,11 +176,10 @@ class TrackSpot:
     else: return
 
   def set(self, channel, inc):
-    v = OLA.lastDataSent[channel]
-    v = min(255, max(0, v+inc))
-    print(channel, '=', OLA.lastDataSent[channel], '->', v)
-    OLA.lastDataSent[channel] = v
-    OLA.send(OLA.lastDataSent)
+    v = DMX.get(channel)
+    u = min(255, max(0, v+inc))
+    print(channel, '=', DMX.get(channel), '->', u)
+    DMX.setAndSend(channel, u)
 
 
 if __name__ == '__main__':
@@ -202,8 +201,7 @@ if __name__ == '__main__':
   while 1:
     ch = getch().lower()
     if ch == 'z':
-      OLA.exit()
-      break
+      programExit()
     elif ch == ' ':
       CueMgr.nextCue()
     elif ch == '/':
@@ -212,16 +210,14 @@ if __name__ == '__main__':
       CueMgr.nextScene()
     elif ch == ',' or ch == '<':
       CueMgr.prevScene()
-    elif ch == 'p':
-      print(OLA.lastDataSent)
 
     # track spots off or on
     elif ch == 't':
-     OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 255
-     OLA.send(OLA.lastDataSent)
+      for c in [197, 165, 174]: DMX.set(c, 255)
+      DMX.send()
     elif ch == 'y':
-     OLA.lastDataSent[197] = OLA.lastDataSent[165] = OLA.lastDataSent[174] = 0
-     OLA.send(OLA.lastDataSent)
+      for c in [197, 165, 174]: DMX.set(c, 0)
+      DMX.send()
 
     # manual control of track spots
     else:

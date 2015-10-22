@@ -5,6 +5,9 @@
 #include <SC.h>
 #include <PrintLevel.h>
 
+// this flag will invert output (255-output), for active low devices
+#define INVERT_HIGH_AND_LOW
+
 SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
   {"pwm",    cmdPWMPins},
@@ -53,7 +56,11 @@ void cmdPWMPins() {
   }
   
   for(int i = 0; i < count; i++) {
-    analogWrite(Channels[i], channelValues[i]);
+    int c = channelValues[i];
+#ifdef INVERT_HIGH_AND_LOW
+    c = 255 - c;
+#endif
+    analogWrite(Channels[i], c);
   }
   
   printAck("OK set ");
