@@ -1,3 +1,7 @@
+def clearScreen():
+    #os.system('clear')
+    print("\x1b[2J\x1b[H", end='')
+
 def _find_getch():
     try:
         import termios
@@ -22,3 +26,6 @@ def _find_getch():
 
 getch = _find_getch()
 
+def getchMsg(str='Press any key'):
+  print(str, end=' ', flush=True)
+  getch()
