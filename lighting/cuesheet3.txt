@@ -19,6 +19,7 @@ scene Olga
 		fade 2 maskspotoff
 		fade 2 olgaBUSNS
 		fade 2 olgaBUS
+	# Olga walks off
 	seq 2
 		fade 3 maskspotoff
 		fade 3 blackout
@@ -35,7 +36,7 @@ scene FleekyBarrel
 	seq 2 
 		fade 2 fleekyNS
 		fade 2 maskspoton
-	# wait one rotation	
+	# wait one rotation
 	seq 2
 		fade 2 maskspotoff
 		fade 3 blackout
@@ -46,11 +47,12 @@ scene JamieDearSusan
 		fade 3 maskspoton
 
 # Prepare on "Love will never have to do with crucifixes"
-# Arrows in Inka
+# Wait for Inka to insert arrows and bend over backwards
 scene Inka
 	seq 1
 		fade 3 inkatargetspot
-	# Micah leaves
+	# Inka stands up on table
+	# need follow spot in red
 	seq 2
 		fade 3 inkarbBUSNS
 		fade 3 maskspoton
@@ -59,10 +61,12 @@ scene Inka
 		fade 2 maskspotoff
 		fade 2 blackout
 
+# wait for strike, but cue when Jamie starts
 scene JamieBeforeBrad
 	seq 2
 		load jamie4bradNS
 		fade 3 maskspoton
+	# Jamie finishes
 	seq 1
 		fade 3 maskspotoff
 
@@ -87,15 +91,17 @@ scene Intermission
 	seq 2
 		fade 2 maskspotoff
 		fade 2 blackout
-		
+		load colinspotdark
+
 scene Colin
 	seq 1
-		load colinspotdark
-	seq 1
 		fade 2 maskspoton
-	seq 1
+	# Colin walks off stage right
+	seq 2
+		fade 2 maskspotoff
 		fade 2 colinexitupdate
 
+# Colin actually leaves
 scene JamieWalktheWeb
 	seq 1
 		fade 2 colinjamie
@@ -113,18 +119,21 @@ scene JamieGirlinTheHallway
 	seq 2
 		fade 3 jamiegirlhallwaylessfillCHECKNS
 		fade 2 maskspoton
-		#fade out spot manually, wait for hoop posing
+	seq 1
+		fade 2 maskspotoff
 
+#Olga leaves
 scene Rachel
 	seq 3
-		fade 2 maskspotoff
 		fade 3 rachelNS
 		fade 2 rachel        
 
+#Rachel leaves
 scene EndRachelGirlinTheHallway
 	seq 2
 		fade 2 maskspotoff
 		fade 3 jamiegirlhallwaylessfillCHECKNS
+	#Olga leaves	
 	seq 1
 		fade 2 blackout
 
@@ -137,6 +146,7 @@ scene MicahGodandtheMan
 	seq 2
 		fade 2 maskspotoff
 		fade 2 micah
+	#stage right to put on shirt...?
 	seq 2
 		fade 2 micahshiftNS
 		fade 2 micahshift
@@ -147,11 +157,13 @@ scene JamieExitInterview
 		load exitinterviewBUSNS
 		fade 3 exitinterviewBUS
 
+#Jamie walks off
 scene RachelPetri
 	seq 3
 		fade 2 maskspotoff
 		fade 2 rachelpetriNS
 		fade 2 rachelpetri
+	# music stops, Rachel spinning, then drops
 	seq 2
 		fade 2 rachelpetriNS
 		load blackout
@@ -160,16 +172,20 @@ scene JamieAnalgesia
 	seq 2
 		fade 2 WSBFNS
 		fade 2 WSBF
+	#Jamie finishes
 	seq 1
 		fade 2 WSBFNS
 
 scene BradColin
 	seq 1
 		fade 2 blackout
+	#music
 	seq 1
 		load ELJoyce
+	#both enter near door
 	seq 1
 		load ELJoyce
+	#enter separate doors
 	seq 1
 		load EL3BUS
 	seq 1
@@ -189,13 +205,3 @@ scene Closing
 		fade 2 blackout
 		fade 3 bluescrim
 
-		
-
-
-
-
-		
-		
-		
-
-		

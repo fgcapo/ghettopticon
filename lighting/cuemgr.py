@@ -304,6 +304,8 @@ class SliderView:
 
       if ch == '0':
         DMX.setAndSend(self.ixCursor, self.MinValue)
+      elif ch == '8':
+        DMX.setAndSend(self.ixCursor, self.MaxValue//2)
       elif ch == '9':
         DMX.setAndSend(self.ixCursor, self.MaxValue)
       
