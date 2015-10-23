@@ -51,6 +51,7 @@ scene JamieDearSusan
 scene Inka
 	seq 1
 		fade 3 inkatargetspot
+		fade 2 maskspotoff
 	# Inka stands up on table
 	# need follow spot in red
 	seq 2
@@ -182,6 +183,7 @@ scene BradColin
 	#music
 	seq 1
 		load ELJoyce
+		load BradColinArms
 	#both enter near door
 	seq 1
 		load ELJoyce
