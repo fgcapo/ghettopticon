@@ -2,6 +2,7 @@ import sys, os, os.path, threading, ast, time
 from console import * 
 from cue import *
 from cueengine import CueEngine, CuesFilename
+from trackspot import TrackSpot
 
 CueMgr = CueEngine()
 
@@ -328,41 +329,14 @@ class SliderView:
 
 
 
-class TrackSpot:
-  def __init__(self, x, y, lum, up, down, left, right, brighter, darker):
-    self.x = x-1
-    self.y = y-1
-    self.lum = lum-1
-    self.up = up
-    self.down = down
-    self.left = left
-    self.right = right
-    self.brighter = brighter
-    self.darker = darker
-
-  def onKey(self, ch):
-    inc = 5
-    if ch == self.up:         self.set(self.x, inc)
-    elif ch == self.down:     self.set(self.x, -inc)
-    elif ch == self.left:     self.set(self.y, inc)
-    elif ch == self.right:    self.set(self.y, -inc)
-    elif ch == self.brighter: self.set(self.lum, inc)
-    elif ch == self.darker:   self.set(self.lum, -inc)
-    else: return
-
-  def set(self, channel, inc):
-    v = DMX.get(channel)
-    u = min(255, max(0, v + inc))
-    print(channel, '=', v, '->', u)
-    DMX.setAndSend(channel, u)
-
 
 class CueView:
   def __init__(self):
     self.lineInputKey = 'c'
-    self.spotLeft =  TrackSpot(162, 161, 166, 'w', 's', 'a', 'd', 'e', 'q')
-    self.spotRight = TrackSpot(171, 170, 175, '8', '5', '6', '4', '9', '7')
-    self.spotCenter = TrackSpot(194, 193, 198, 'g', 'b', 'v', 'n', 'h', 'f')
+    self.spots = [
+      TrackSpot(DMX, 161, 'w', 's', 'a', 'd', 'e', 'q'),
+      TrackSpot(DMX, 170, '8', '5', '6', '4', '9', '7'),
+      TrackSpot(DMX, 193, 'g', 'b', 'v', 'n', 'h', 'f')]
 
     CueMgr.loadCueSheet(CuesFilename)
 
@@ -395,17 +369,18 @@ class CueView:
 
     # track spots off or on
     elif ch == 't':
-      for c in [197, 165, 174]: DMX.set(c, 255)
+      for spot in self.spots:
+        DMX.set(spot.strobe, 255) 
+        DMX.set(spot.speed, 255) 
       DMX.send()
     elif ch == 'y':
-      for c in [197, 165, 174]: DMX.set(c, 0)
+      for spot in self.spots:
+        DMX.set(spot.intensity, 0)
       DMX.send()
 
     # manual control of track spots
     else:
-      self.spotLeft.onKey(ch)
-      self.spotRight.onKey(ch) 
-      self.spotCenter.onKey(ch)
+      for spot in self.spots: spot.onKey(ch)
 
   def handleLineInput(self, line):
       tokens = line.split()
