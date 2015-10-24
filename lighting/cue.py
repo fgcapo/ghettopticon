@@ -160,6 +160,9 @@ class CueFade(CueLoad):
 
   def run(self, immediate=False):
     #try:
+      # load the file again in case it has changed since the cuesheet was loading
+      self.load()
+
       timestep = .05
       printPeriodPeriod = .25
       printPeriodTimestepCount = printPeriodPeriod / timestep

@@ -128,7 +128,7 @@ scene JamieGirlinTheHallway
 scene Rachel
 	seq 3
 		fade 3 rachelNS
-		fade 2 rachel        
+		fade 2 rachel
 
 #Rachel leaves
 scene EndRachelGirlinTheHallway
@@ -152,10 +152,12 @@ scene MicahGodandtheMan
 	seq 2
 		fade 2 micahshiftNS
 		fade 2 micahshift
+	seq 2
+		fade 2 maskspotoff
+		load blackout
 
 scene JamieExitInterview
-	seq 3
-		fade 2 maskspotoff
+	seq 2
 		load exitinterviewBUSNS
 		fade 3 exitinterviewBUS
 

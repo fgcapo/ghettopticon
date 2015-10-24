@@ -383,13 +383,7 @@ class CueView:
       for spot in self.spots: spot.onKey(ch)
 
   def handleLineInput(self, line):
-      tokens = line.split()
-      cmd = tokens[0]
-
-      if cmd == 'cuesheet':
-        CueMgr.loadCueSheet(restAfterWord(cmd, line))
-        self.onFocus()
-
+    pass
 
 dmxView = SliderView()
 lightArmView = LightArmView() 
@@ -403,6 +397,11 @@ def programExit():
   ucLEDs.exit()
   exit()
 
+def cmdLoadCueSheet(line):
+  tokens = line.split()
+  filename = restAfterWord(tokens[0], line)
+  CueMgr.loadCueSheet(filename)
+  
 
 if __name__ == '__main__':
   clearScreen()
@@ -442,7 +441,7 @@ if __name__ == '__main__':
         elif cmd == 'save': cmdSave(tokens, line)
         elif cmd == 'load': cmdCue(line, CueLoad)
         elif cmd == 'fade': cmdCue(line, CueFade)
-        #elif cmd == 'cuesheet': loadCueSheet(line) # handled in cview
+        elif cmd == 'cuesheet': cmdLoadCueSheet(line) # handled in cview
         else: currentView.handleLineInput(line)
       except ArithmeticError as e:
         print(e)
