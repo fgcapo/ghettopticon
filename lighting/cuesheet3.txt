@@ -34,6 +34,7 @@ scene JamieBlameless
 # "I do not care about about a fucking ring"
 scene FleekyBarrel
 	seq 2 
+		fade 2 maskspotoff
 		fade 2 fleekyNS
 		fade 2 maskspoton
 	# wait one rotation
