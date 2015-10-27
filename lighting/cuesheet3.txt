@@ -44,7 +44,8 @@ scene FleekyBarrel
 
 scene JamieDearSusan
 	seq 2 
-		load jamie3dearsusanNS
+	#load jamie3dearsusanNS
+		load joycestrangelymadeNS
 		fade 3 maskspoton
 
 # Prepare on "Love will never have to do with crucifixes"
