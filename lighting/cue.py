@@ -1,10 +1,9 @@
 import sys, os, threading, ast, time
 from console import *
-import lightarm as uc
+from lightarm import LightArms
 from dmx import DmxChannels
 
-ucServos = uc.Servos('/dev/arbotix')
-ucLEDs = uc.LEDs('/dev/led')
+Arms = LightArms()
 DMX = DmxChannels()
 
 def openCueFile(filenameOnly, mode='r'):
@@ -52,12 +51,7 @@ def loadCueFile(filenameOnly):
     return json
 
     # TODO check version
-    """if json['version'] == 0:
-      DMX.set(json['DMX'])
-      ucLEDs.set(json['LightArm']['LEDs'])
-      ucServos.set(json['LightArm']['Servos'])
-    else:
-      print('Error file version unknown')"""
+    #if json['version'] == 0:
 
 ########################################################
 # cue commands
@@ -110,13 +104,11 @@ class CueLoad(Cue):
 
       # Light Arms - may be absent
       try:
-        self.leds = data['LightArm']['LEDs']
-        self.servos = data['LightArm']['Servos']
+        self.armData = data['LightArm']
       except:
         self.leds = self.servos = None
       #except BaseException as e:
     #  raise BaseException('Error loading file: ' + str(e))
-
 
   def run(self, immediate=False):
       # load the file again in case it has changed since the cuesheet was loading
@@ -132,12 +124,10 @@ class CueLoad(Cue):
         DMX.setAndSend(0, current)
 
       # Light Arms - may be absent
-      if self.leds and self.servos:
-        try:
-          ucLEDs.set(0, self.leds)
-          ucServos.set(self.servos)
-        except:
-          pass
+      try:
+        if self.armData: Arms.load(self.armData)
+      except:
+        pass
 
     
   # fade from current scene to new scene
@@ -174,12 +164,10 @@ class CueFade(CueLoad):
 
       # Light Arms - may be absent
       # TODO fade light arms!
-      if self.leds and self.servos:
-        try:
-          ucLEDs.set(0, self.leds)
-          ucServos.set(self.servos)
-        except:
-          pass
+      try:
+        if self.armData: Arms.load(self.armData)
+      except:
+        pass
 
       # DMX
       if self.targetDMX:
@@ -224,7 +212,9 @@ def cmdSave(tokens, line):
 
   filename = restAfterWord(tokens[0], line)
   dmx = str(DMX.get())
-  text = "{\n 'version': 0,\n 'DMX': " + dmx + ",\n 'LightArm': {\n  'Servos': " + str(ucServos) + ",\n  'LEDs': " + str(ucLEDs) + "\n }\n}"
+  arms = str(Arms)
+  text = "{\n 'version': 0,\n 'DMX': " + dmx + ",\n 'LightArm': " + arms + "\n}"
+  #text = "{\n 'version': 0,\n 'DMX': " + dmx + ",\n 'LightArm': {\n  'Servos': " + str(ucServos) + ",\n  'LEDs': " + str(ucLEDs) + "\n }\n}"
   #text = "{'version': 0, 'DMX': " + dmx + ", 'LightArm': {'Servos': " + str(ucServos) + ", 'LEDs': " + str(ucLEDs) + "}}"
   
   print(text)

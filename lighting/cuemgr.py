@@ -34,19 +34,8 @@ class View:
 
 
 class LightArmView:
-  def setBoth(self, id, pos):
-    ucServos.set(id, pos)
-    ucServos.set(id+1, pos)
-
   def __init__(self):
     self.lineInputKey = 'c'
-
-    # ID of base servo; will they all be the same dimension?
-    # other servo will be ID+1
-    self.armIDs = [21, 29, 27, 17]#,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    for id in self.armIDs: self.setBoth(id, 512)
-
-    self.setBoth(25, 512)  # servos changed IDs; init the old ID too
 
     self.PageWidth = 4    
     self.ixCursor = 0
@@ -66,23 +55,24 @@ class LightArmView:
   # type must be 'x' or 'y'
   def getAngle(self, type, index=None):
     if index is None: index = self.ixCursor
-    id = self.armIDs[index]
+    id = 2 * index
     if type == 'y': id += 1
     elif type != 'x': raise BaseException('bad dimension')
-    return ucServos.get(id)
+    return Arms.getAngle(id)
 
-  # returns a list of the selected indices
+  # returns a list of the selected arms' indices
   def selected(self):
     if self.inSingleMode():
       return [self.ixCursor]
     else:
       return range(self.group(), self.PageWidth)
 
+  # returns a list of selected servo IDs, two for every arm index
   def selectedIDs(self):
     ids = []
     for i in self.selected():
-      ids.append(self.armIDs[i])
-      ids.append(self.armIDs[i] + 1)
+      ids.append(2*i)
+      ids.append(2*i + 1)
     return ids
      
   # return starting index of group that cursor is in
@@ -95,27 +85,22 @@ class LightArmView:
     if cursor is None: cursor = self.ixCursor
     return index // self.PageWidth == cursor // self.PageWidth
  
-  def idsGroupX(self):
-      return map(lambda x: self.armIDs[x], self.selected()) 
-
-  def idsGroupY(self):
-      return map(lambda x: 1 + self.armIDs[x], self.selected())
-
    # add increment to the angle of the X servo of the currently selected arm(s)
   def modX(self, inc):
-    ids = map(lambda x: self.armIDs[x], self.selected())
+    ids = self.selected()
     for id in ids:
-      ucServos.set(id, fitServoRange(ucServos.get(id) + inc))
+      Arms.setAngle(id, fitServoRange(Arms.getAngle(id) + inc))
 
-  # add increment to the angle of the X servo of the currently selected arm(s)
+  # add increment to the angle of the Y servo of the currently selected arm(s)
   def modY(self, inc):
-    ids = map(lambda x: 1 + self.armIDs[x], self.selected())
+    ids = self.selected()
     for id in ids:
-      ucServos.set(id, fitServoRange(ucServos.get(id) + inc))
+      id += 1
+      Arms.setAngle(id, fitServoRange(Arms.getAngle(id) + inc))
 
   def modI(self, inc):
     channel = self.ixCursor // self.PageWidth
-    ucLEDs.set(channel, fitLEDRange(ucLEDs.get(channel) + inc))
+    Arms.setLED(channel, fitLEDRange(Arms.getLED(channel) + inc))
 
   def handleLineInput(self, line):
     tokens = line.split()
@@ -127,20 +112,9 @@ class LightArmView:
     if ch == 'x':
       self.toggleMode() 
     if ch == 'r': 
-      ucServos.relax(self.selectedIDs())
+      Arms.relax(self.selectedIDs())
     if ch == '0':
-      for i in self.selected():
-        ucServos.set(self.armIDs[i], 512)
-        ucServos.set(1 + self.armIDs[i], 512)
-    if ch == '9':
-      for i in self.selected():
-        ucServos.set(self.armIDs[i], 300)
-        ucServos.set(1 + self.armIDs[i], 300)
-    if ch == '8':
-      for i in self.selected():
-        ucServos.set(self.armIDs[i], 700)
-        ucServos.set(1 + self.armIDs[i], 700)
-
+      Arms.setAngle(self.selectedIDs(), 512)
     elif ch == 'w':
       self.modY(self.inc())
     elif ch == 's':
@@ -215,7 +189,7 @@ class LightArmView:
 
     print('i: |', end='')
     for i in range(numArms):
-      print('{0:^3}|'.format(ucLEDs.get(i//self.PageWidth)), end='')
+      print('{0:^3}|'.format(Arms.getLED(i//self.PageWidth)), end='')
     print('')
 
     printHSep(False)
@@ -399,8 +373,7 @@ currentView = cueView
 
 def programExit():
   DMX.exit()
-  ucServos.exit()
-  ucLEDs.exit()
+  Arms.exit()
   exit()
 
 def cmdLoadCueSheet(line):

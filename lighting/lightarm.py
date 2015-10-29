@@ -136,16 +136,16 @@ class Servos(SerialThread):
         #for i in range(1, self.NumServos+1):
         #    self.set(i, 512)
 
-    def get(self, id): return self.anglesDict[id]
+    def getAngle(self, id): return self.anglesDict[id]
 
-    def set(self, idOrDict, angle=None):
+    def setAngle(self, idOrDict, angle=None):
       if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
       elif isinstance(idOrDict, dict): self.anglesDict = idOrDict
+      elif isinstance(idOrDict, list): 
+        for id in idOrDict: self.anglesDict[id] = angle
       else: raise BaseException('bad argument to Servos.setAngle')
-      if 21 not in self.anglesDict:
-        self.anglesDict[21] = 512 # TODO hack until cues redone
-        self.anglesDict[22] = 512
-      self.setServoPos()
+
+     self.setServoPos()
 
     def __str__(self): return str(self.anglesDict)
 
@@ -176,51 +176,14 @@ class Servos(SerialThread):
 #                
 #        #else: print(line)
 
-    # argument is a dictionary of id:angle
-    # angles are 0-1023; center is 512; safe angle range is 200-824
-    def setServoPos(self, binary=False):
-        if not self.valid(): return
-
-        # send a text command which says to expect a block of binary
-        # then send the angles as an array of 16-bit ints in order
-        # angle is set to 0 for missing IDs
-        if binary:
-            maxID = 0  # IDs start at 1, so numAngles = highest ID
-            for id,angle in anglesDict.items(): 
-                maxID = max(maxID, id)
-
-            cmd = 'B ' + str(maxID) + '\n'
-            #print(cmd)
-            self.write(str.encode(cmd))
-
-            buf = bytearray()
-            for id in range(1, maxID+1):
-                angle = 0
-                if id in anglesDict: angle = anglesDict[id]
-                
-                # 16-bit little endian
-                buf += struct.pack('<H', angle)
-            
-            print(buf)
-            ucServos.write(buf)
-
-        # text protocol of id:angle pairs
-        else:
-            cmd = 's'
-            for id,angle in self.anglesDict.items():
-                cmd += ' ' + str(id) + ':' + str(angle)
-
-            cmd += '\n'
-            #print(cmd)
-            self.write(str.encode(cmd))
-
     # takes one or a list of IDs
     # relaxes all if IDs is None
-    def relax(self, IDs):
+    def relax(self, IDs, relax=True):
       if isinstance(IDs, int): IDs = [IDs]
       elif IDs is None: IDs = self.anglesDict.keys()
 
-      cmd = 'relax'
+      if relax: cmd = 'relax'
+      else: cmd = 'torq'
       for id in IDs: cmd += ' ' + str(id)
       print(cmd)
       cmd += '\n'
@@ -235,3 +198,105 @@ class Servos(SerialThread):
     def readServos(self):
         self.write(b'r\n')
 
+
+LEDsPath = '/dev/led'
+ServosPath = '/dev/arbotix'
+
+LEDsPort = 7777
+ServosPort = 8888
+
+class NetworkRoute:
+  def __init__(self, port):
+    self.address = '10.0.0.23'
+    self.port = port
+    self.socket = None
+
+  def getAngle(self, id): pass
+  def setAngle(self, idOrDict, angle=None): pass
+
+class Servo:
+  def __init__(self, route, id, invert=False):
+    self.id = id
+    self.invert = invert
+    self.relaxed = False
+    self.route = route
+
+class LightArms:
+
+  def __init__(self):
+      # only 4 channels of LEDs
+      serial = LEDs(LEDsPath)
+      network = NetworkRoute(LEDsPort)
+      self.leds = [serial, network, network, network]
+
+      # servo routes
+      serial = Servos(ServosPath)
+      network = NetworkRoute(ServosPort)
+
+       # index is external ID
+      self.servos = [
+        Servo(serial, 21),              Servo(serial, 22),
+        Servo(serial, 29),              Servo(serial, 30),
+        Servo(serial, 27, invert=True), Servo(serial, 28),
+        Servo(serial, 17),              Servo(serial, 18),
+        Servo(network, 25),             Servo(network, 26),
+#        Servo(serial, 29),              Servo(serial, 30),
+#        Servo(serial, 27, invert=True), Servo(serial, 28),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 29),              Servo(serial, 30),
+#        Servo(serial, 27, invert=True), Servo(serial, 28),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 21),              Servo(serial, 22),
+#        Servo(serial, 29),              Servo(serial, 30),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 27, invert=True), Servo(serial, 28),
+#        Servo(serial, 17),              Servo(serial, 18),
+      ]
+
+      # TODO command to center for now, but read position in future
+      for s in self.servos:
+        s.route.setAngle(s.id, 512)
+
+     
+  def getLED(self, index):
+    route = self.leds[index]
+    return route.get(index)
+
+  def setLED(self, index, channel):
+    route = self.leds[index]
+    route.set(index, channel)
+
+  def getAngle(self, index):
+    servo = self.servos[index]
+    return servo.route.getAngle(index)
+
+  def setAngle(self, indexOrDict, angle=None):
+    print(indexOrDict)
+    if isinstance(indexOrDict, int):
+      indexOrDict = {indexOrDict:angle}
+    
+    if isinstance(indexOrDict, dict):
+      # split a dict into multiple dicts based on each ID's route
+      dicts = {}
+      for index,angle in indexOrDict.items():
+        servo = self.servos[index]
+        route = servo.route
+        if route not in dicts: dicts[route] = {}
+        dicts[route][servo.id] = angle
+      for route in dicts:
+        route.setAngle(dicts[route])
+
+    elif isinstance(idOrDict, list): raise BaseException()
+    #  for id in idOrDict: self.anglesDict[id] = angle
+    
+
+    else: raise BaseException('bad argument to Servos.setAngle')
+
+  def __str__(self):
+    servo = {}
+    leds = []
+
+    
+    
+    return {'Servos':servos, 'LEDs':leds}
