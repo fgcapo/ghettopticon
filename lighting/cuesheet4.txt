@@ -1,0 +1,218 @@
+scene BlueScrimIntro
+	seq 1	
+		fade 2 beforeShowOlgaTeaTimeBUS
+	seq 2
+		fade 2 maskspotoff
+		fade 7 blackout
+
+# right spot white, left spot magenta
+scene JamieIntro
+	seq 2
+		load jamie1introNS
+		fade 2 maskspoton
+
+# "Charlemagne, Charlemagne, Charlemagne!"
+# "Enjoy driving you crazy"
+# light doors
+scene Olga
+	seq 3
+		fade 2 maskspotoff
+		fade 2 olgaBUSNS
+		fade 2 olgaBUS
+	# Olga walks off
+	seq 2
+		fade 3 maskspotoff
+		fade 3 blackout
+
+# wait 2 seconds
+# right spot white, left spot blue
+scene JamieBlameless
+	seq 2
+		fade 2 jamie2fleekyNS
+		fade 2 jamie2fleeky
+
+# "I do not care about about a fucking ring"
+scene FleekyBarrel
+	seq 2 
+		fade 2 maskspotoff
+		fade 2 fleekyNS
+		fade 2 maskspoton
+	# wait one rotation
+	seq 2
+		fade 2 maskspotoff
+		fade 3 blackout
+
+scene JamieDearSusan
+	seq 2 
+	#load jamie3dearsusanNS
+		load joycestrangelymadeNS
+		fade 3 maskspoton
+
+# Prepare on "Love will never have to do with crucifixes"
+# Wait for Inka to insert arrows and bend over backwards
+scene Inka
+	seq 2
+		fade 3 inkatargetspot
+		fade 2 maskspotoff
+	# Inka stands up on table
+	# need follow spot in red
+	seq 2
+		fade 3 inkarbBUSNS
+		fade 3 maskspoton
+	# Inka walks off
+	seq 2
+		fade 2 maskspotoff
+		fade 2 blackout
+
+# wait for strike, but cue when Jamie starts
+scene JamieBeforeBrad
+	seq 2
+		load jamie4bradNS
+		fade 3 maskspoton
+	# Jamie finishes
+	seq 3
+		fade 3 maskspotoff
+		fade 2 blackout
+		load colinspotdark
+
+# "Sugar with magic sprinkles"
+#scene Brad
+#	seq 1
+#		fade 2 bradNS
+#	# first trick
+#	seq 1
+#		fade 2 maskspoton
+#	# curtains begin to close
+#	seq 1
+#		fade 1.5 maskspotoff
+#	# curtains closed
+#	seq 1
+#		fade 2 blackout
+
+scene Colin
+	seq 1
+		fade 2 maskspoton
+	# Colin walks off stage right
+	seq 
+		fade 2 maskspotoff
+#		fade 2 colinexitupdate
+
+ 
+scene Intermission
+	seq 2 
+		fade 2 intermissionceilingbounceNBLNS
+		fade 2 intermissionceilingbounceNBL
+	seq 3
+		fade 2 maskspotoff
+		fade 2 blackout
+#		load colinspotdark
+
+
+# Colin actually leaves
+scene JamieWalktheWeb
+	seq 1
+		fade 2 colinjamie
+
+scene FleekyWalktheWeb
+	seq 3
+		fade 2 maskspotoff
+		fade 2 wtwNS
+		fade 2 wtwred
+	seq 2
+		fade 2 maskspotoff
+		fade 2 blackout
+
+scene JamieGirlinTheHallway
+	seq 2
+		fade 3 jamiegirlhallwaylessfillCHECKNS 
+		fade 2 maskspoton
+	seq 1
+		fade 2 maskspotoff
+
+#Olga leaves
+scene Rachel
+	seq 3
+		fade 3 rachelNS
+		fade 2 rachel
+
+#Rachel leaves
+scene EndRachelGirlinTheHallway
+	seq 2
+		fade 2 maskspotoff
+		fade 3 jamiegirlhallwaylessfillCHECKNS
+	#Olga leaves	
+	seq 1
+		fade 2 blackout
+
+scene JamieGodandtheMan
+	seq 2
+		fade 2 jamiegodandthemanBUSNS
+		fade 2 jamiegodandthemanBUS
+
+scene MicahGodandtheMan
+	seq 2
+		fade 2 maskspotoff
+		fade 2 micah
+	#stage right to put on shirt...?
+	seq 2
+		fade 2 micahshiftNS
+		fade 2 micahshift
+	seq 2
+		fade 2 maskspotoff
+		load blackout
+
+scene JamieExitInterview
+	seq 2
+		load exitinterviewBUSNS
+		fade 3 exitinterviewBUS
+
+#Jamie walks off
+scene RachelPetri
+	seq 3
+		fade 2 maskspotoff
+		fade 2 rachelpetriNS
+		fade 2 rachelpetri
+	# music stops, Rachel spinning, then drops
+	seq 2
+		fade 2 rachelpetriNS
+		load blackout
+
+scene JamieAnalgesia
+	seq 2
+		fade 2 WSBFNS
+		fade 2 WSBF
+	#Jamie finishes
+	seq 1
+		fade 2 WSBFNS
+
+#first cue before music!
+scene BradColin
+	seq 1
+		fade 2 blackout
+	#music
+	seq 2
+		load ELJoyce
+		load BradColinArms
+	#both enter near door
+	seq 1
+		load ELJoyce
+	#enter separate doors
+	seq 1
+		load EL3BUS
+	seq 1
+		load EL4
+	seq 1
+		load prestageJoyce
+	seq 1
+		load tumbleBUS
+	seq 1
+		load EL5Joyce
+	seq 1
+		load tumbleBUS
+
+scene Closing
+	seq 3
+		fade 2 maskspotoff
+		fade 2 blackout
+		fade 3 bluescrim
+
