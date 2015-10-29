@@ -79,7 +79,7 @@ class CueEngine:
 
   def nextScene(self): 
     if self.onLastScene():
-      print(self.getLoc(), 'On Last Scene')
+      print('At End')
       return
     self.ixScene += 1
     self.ixCue = -1
@@ -88,7 +88,7 @@ class CueEngine:
 
   def prevScene(self):
     if self.onFirstScene():
-      print(self.getLoc(), 'On First Scene')
+      print('At Beginning')
       return
     self.ixScene -= 1
     self.ixCue = -1

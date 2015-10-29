@@ -1,6 +1,6 @@
 scene BlueScrimIntro
 	seq 1	
-		fade 2 beforeShowOlgaTeaTimeBUS
+		fade 2 beforeshow
 	seq 2
 		fade 2 maskspotoff
 		fade 7 blackout
@@ -99,15 +99,13 @@ scene FleekyWalktheWeb
 scene JamieGirlinTheHallway
 	seq 2
 		fade 3 jamiegirlhallwaylessfillCHECKNS 
-		fade 2 maskspoton
 	seq 1
 		fade 2 maskspotoff
 
 #Olga leaves
 scene Rachel
 	seq 3
-		fade 3 rachelNS
-		fade 2 rachel
+		fade 3 rachel
 
 #Rachel leaves
 scene EndRachelGirlinTheHallway
@@ -119,8 +117,7 @@ scene EndRachelGirlinTheHallway
 		fade 2 blackout
 
 scene JamieGodandtheMan
-	seq 2
-		fade 2 jamiegodandthemanBUSNS
+	seq 1
 		fade 2 jamiegodandthemanBUS
 
 scene MicahGodandtheMan
@@ -128,8 +125,7 @@ scene MicahGodandtheMan
 		fade 2 maskspotoff
 		fade 2 micah
 	#stage right to put on shirt...?
-	seq 2
-		fade 2 micahshiftNS
+	seq 1
 		fade 2 micahshift
 	seq 2
 		fade 2 maskspotoff
@@ -138,33 +134,29 @@ scene MicahGodandtheMan
 scene JamieExitInterview
 	seq 2
 		load exitinterviewBUSNS
-		fade 3 exitinterviewBUS
 
 #Jamie walks off
 scene RachelPetri
-	seq 3
+	seq rachelpetri
 		fade 2 maskspotoff
 		fade 2 rachelpetriNS
-		fade 2 rachelpetri
 	# music stops, Rachel spinning, then drops
-	seq 2
+	seq petristop
 		fade 2 rachelpetriNS
 		load blackout
 
 scene JamieAnalgesia
-	seq 2
+	seq lastpoem
 		fade 2 WSBFNS
-		fade 2 WSBF
 	#Jamie finishes
-	seq 1
-		fade 2 WSBFNS
+	seq endlastpoem
+		fade 2 maskspotoff
 
-#first cue before music!
+#! first cue before music
 scene BradColin
-	seq 1
+	seq blackoutbeforelights
 		fade 2 blackout
-	#music
-	seq 2
+	seq music starts
 		load ELJoyce
 		load LightArmsOn
 	#both enter near door
@@ -180,7 +172,7 @@ scene BradColin
 	seq 1
 		load tumbleBUS
 	seq 1
-		load EL5Joyce
+		load EL5restage
 	seq 1
 		load tumbleBUS
 	seq Charibari
