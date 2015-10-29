@@ -37,7 +37,7 @@ class LightArmView:
 
     # ID of base servo; will they all be the same dimension?
     # other servo will be ID+1
-    self.armIDs = [25, 29, 27, 17]#, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    self.armIDs = [21, 29, 27, 17]#, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     for id in self.armIDs:
       ucServos.set(id, 512)
       ucServos.set(id+1, 512)

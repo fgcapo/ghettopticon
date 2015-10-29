@@ -6,13 +6,33 @@
 /////////////////////////////////////////////////////////////////////////////////
 // globals
 
+struct PositionTuple { int id, angle; };
+
+int parseID(const char *arg);
+int parseAngle(const char *arg);
+boolean parsePositionTuple(char *s, PositionTuple *out);
+int parseListOfIDs(int *outIDs, int maxIDs);
+
+void readVoltage();
+void readServoPositions();
+void cmdSetPrintLevel();
+//void cmdSetMaxSpeed();
+void cmdLoadPose();
+void cmdMoveServos();
+void cmdInterpolateServos();
+void cmdInterpolateServosBinary();
+void cmdRelax();
+void cmdTorque();
+
 SerialCommand::Entry CommandsList[] = {
-  {"plevel", cmdSetPrintLevel},
-  {"speed",  cmdSetMaxSpeed},
   {"v",      readVoltage},
   {"r",      readServoPositions},
-  {"s",      cmdSetServoPosition},
-  {"B",      cmdSetServoPositionBinary},
+  {"plevel", cmdSetPrintLevel},
+//  {"speed",  cmdSetMaxSpeed},
+  {"p",      cmdLoadPose},
+  {"s",      cmdMoveServos},
+//  {"i",      cmdInterpolateServos},
+//  {"B",      cmdInterpolateServosBinary},
   {"relax",  cmdRelax},
   {"torq",   cmdTorque},
   {NULL,     NULL}
@@ -23,14 +43,28 @@ SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 const int NumServos = 32;
 BioloidController Servos(1000000);
 
-// When a move is requested, the servos will move at different speeds in order to arrive
-// at the target position simultaneously. But movement time will be constrained so that
-// no servo will move faster than this maximum speed, constrained to [1-1000].
+const int BroadcastID = 254;
+
+// When moving servos without interpolating, set this speed on the servos.
+// The units are servo specific, range [1-1023].
+int gServoSpeed = 80;
+
+// When an interpolating move is requested, the servos will move at different speeds in order to
+// arrive at the target position simultaneously. But movement time will be constrained so that
+// servos will not violaten this maximum speed, constrained to [1-1000] angle-units per second
+int gMaxInterpolationSpeed = 100;
 // Speed is inverted to simplify calculation.
-int gMaxSpeedInv = 10;  // max servo movement speed inverted, in ms per angle-unit
+//int gMaxInterpolationSpeedInv = 10;  // max servo movement speed inverted, in ms per angle-unit
 
-bool relaxed = false;
+//bool relaxed = false;
 
+const char *MsgTupleFormatError = "Error: takes pairs in the form <ID>:<angle>";
+
+void broadcastSpeed() {
+  ax12SetRegister2(BroadcastID, AX_GOAL_SPEED_L, gServoSpeed);
+}
+
+/*
 /////////////////////////////////////////////////////////////////////////////////////////////
 // helpers
 
@@ -74,6 +108,82 @@ boolean toInt(const char *str, int *result) {
   // if end does not point at a null-terminator, the string contained errorneous characters
   return end != str && *end == '\0';
 }
+*/
+
+// Takes a string of an integer (numeric chars only). Returns the integer on success.
+// Prints error and returns 0 if there is a parse error or the ID is out of range.
+int parseID(const char *arg) {
+  char *end;
+  int id = strtol(arg, &end, 10);
+
+  if(*end != '\0' || id < 1 || id > 253) {
+      printlnError("Error: ID must be between 1 and 253");
+      return 0;
+  }
+  
+  return id;
+}
+
+// Takes a string of an integer (numeric chars only). Returns the integer on success.
+// Prints error and returns 0 if there is a parse error or the angle is out of range.
+// Contrains from -90 to 90 degrees
+int parseAngle(const char *arg) {
+  char *end;
+  int angle = strtol(arg, &end, 10);
+  
+  if(*end != '\0' || angle < 200 || angle > 824) {
+    printlnError("Error: angle must be between 200 and 824");
+    return 0;
+  }
+  
+  return angle;
+}
+
+// convert "<id>:<angle>" into 2 integers in a struct
+// returns false on error
+boolean parsePositionTuple(char *s, PositionTuple *out) {
+  char *sID = strtok(s, ":");
+  if(sID == NULL) {
+    printlnError(MsgTupleFormatError);
+    return false;
+  }
+  
+  int id = parseID(sID);
+  if(id == 0) return false;
+
+  char *sAngle = strtok(NULL, ":");
+  if(sAngle == NULL) {
+    printlnError(MsgTupleFormatError);
+    return false;
+  }
+  
+  int angle = parseAngle(sAngle);
+  if(angle == 0) return false;
+  
+  out->id = id;
+  out->angle = angle;
+  return true;
+}
+
+// parse a list of IDs from CmdMgr into an array
+// returns -1 on error
+int parseListOfIDs(int *outIDs, int maxIDs) {
+  int count = 0;
+  
+  while(char *arg = CmdMgr.next()) {
+    if(count >= maxIDs) {
+      printlnError("Error: too many IDs");
+      return -1;
+    }
+    
+    int id = parseID(arg);
+    if(id == 0) return -1;
+    outIDs[count++] = id;
+  }
+  
+  return count;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////
 // commands
@@ -93,28 +203,13 @@ void readVoltage() {
   }
 }
 
-
+// Relax a list of servos, or all if no arguments
 void cmdRelax() {
-  
   const int maxAngles = NumServos;
   int ids[maxAngles];
-  int count = 0;
   
-  while(char *arg = CmdMgr.next()) {
-    if(count >= NumServos) {
-      printlnError("Error: too many IDs");
-      return;
-    }
-    
-    int id;
-
-    if(!toInt(arg, &id) || id < 1 || id > 127) {
-      printlnError("Error: ID must be between 1 and 127");
-      return;
-    }
-    
-    ids[count++] = id;
-  }
+  int count = parseListOfIDs(ids, maxAngles);
+  if(count == -1) return;
   
   if(count == 0) {
     count = NumServos;
@@ -137,21 +232,11 @@ void cmdRelax() {
 }
 
 void cmdTorque() {
-  
   const int maxAngles = NumServos;
   int ids[maxAngles];
-  int count = 0;
   
-  while(char *arg = CmdMgr.next()) {
-    int id;
-
-    if(!toInt(arg, &id) || id < 1 || id > 127) {
-      printlnError("Error: ID must be between 1 and 127");
-      return;
-    }
-    
-    ids[count++] = id;
-  }
+  int count = parseListOfIDs(ids, maxAngles);
+  if(count == -1) return;
   
   if(count == 0) {
     count = NumServos;
@@ -173,7 +258,7 @@ void cmdTorque() {
   printlnAck(" Servos");
 }
 
-
+/*
 // if no argument, prints the maximum speed
 // if one argument, sets the maximum speed and then prints it
 // Units to the user are angle-units per second, valid range [1-1000]
@@ -191,93 +276,101 @@ void cmdSetMaxSpeed() {
       return;
     }
     
-    gMaxSpeedInv = (int)(1000.0 / speed);  // convert to ms per angle-unit
+    gMaxInterpolationSpeed = (int)(1000.0 / speed);  // convert to ms per angle-unit
   }
   
   printAck("max speed in angle-units per second: ");
-  printlnAck(1000.0 / gMaxSpeedInv);  // convert to angle-units per second
-}
+  printlnAck(1000.0 / gMaxInterpolationSpeed);  // convert to angle-units per second
+}*/
 
 void readServoPositions() {
   printAck("Servo Readings:");
-  printlnAck(NumServos);
+  //printlnAck(NumServos);
   
-  Servos.readPose();
+  //Servos.readPose();
 
   for(int i = 0; i < NumServos; i++) {
     int id = Servos.getId(i);
-    int pos = Servos.getCurPose(id);
-    //int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
-    //Serial.print(pos);
+    //int pos = Servos.getCurPose(id);
+    int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
+    //Serial.println(pos);
     
-    if(pos > 2000) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
+    if(pos < 0 || pos > 1024) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
     
     // print key:value pairs space delimited, but column-aligned
-    char buf[16];
+    /*char buf[16];
     int ixEnd = sprintf(buf, "ID:%d", id);
     while(ixEnd < 5) buf[ixEnd++] = ' ';
     buf[ixEnd] = '\0';
 
     printAck(buf);
     printAck(" pos:");
-    printlnAck(pos);
+    printlnAck(pos);*/
   }
 
-  // python dictionary notation  
-  char dictBuf[256] = "{";
+  // python dictionary notation;
+  // allocate 3 for {}\0, and 8 for each pos, though (4 + comma) should be max digits
+  char dictBuf[3 + NumServos * (3+1+4+1)] = "{";
   int ix = 1;
 
   for(int i = 0; i < NumServos; i++) {
     int id = Servos.getId(i);
     int pos = Servos.getCurPose(id);
+    if(pos < 0 || pos > 1024) continue;
 
-    if(i != 0) dictBuf[ix++] = ',';
-    ix += sprintf(dictBuf+ix, "%d:%d", id, pos);
+    ix += sprintf(dictBuf+ix, "%d:%d,", id, pos);
   }
   
-  sprintf(dictBuf+ix, "}");
+  dictBuf[ix - 1] = '}';    //overwrite the final comma
   printlnAlways(dictBuf);
+}
+
+
+// arguments are index:angle pairs
+void cmdMoveServos() {
+  broadcastSpeed();    // servos can forget their speed, or may have reset since we booted
+  
+  PositionTuple tuple;
+  int count = 0;
+  
+  // see what kind of arguments we have
+  while(char *arg = CmdMgr.next()) {
+
+    if(count >= NumServos) {
+      printlnError("Too many arguments");
+      return;
+    }
+
+    if(parsePositionTuple(arg, &tuple) == false) return;
+    count++;
+
+    Servos.setCurPose(tuple.id, tuple.angle);
+  }
+  
+  Servos.writePose();
+  Serial.print("Moving ");
+  Serial.print(count);
+  Serial.println(" servos.");
 }
 
 //servo serial command format:
 //"s <id>:<angle> <id>:<angle> ... \n"
 //angle is 0 to 1024? or 1 to 1023?
 // We shall constrain the angle to 200 to 824, and assume and consider 0 a no-op.
-void cmdSetServoPosition() {
-  const char *FormatErrorMsg = "Error: takes pairs in the form <ID>:<angle>";
-
-  struct Tuple { int id, angle; };
-  
+void cmdInterpolateServos() {
+#if 0
   const int maxAngles = NumServos;
-  Tuple angles[maxAngles];
+  PositionTuple angles[maxAngles];
   int count = 0;
   
+  // parse any number of "id:angle" pairs
   while(char *arg = CmdMgr.next()) {
-    int id, angle;
-
-    char *sID = strtok(arg, ":");
-    if(sID == NULL) {
-      printlnError(FormatErrorMsg);
-      return;
-    }
-    if(!toInt(sID, &id) || id < 1 || id > 127) {
-      printlnError("Error: ID must be between 1 and 127");
+    if(count >= maxAngles) {
+      printlnError("Too many arguments");
       return;
     }
 
-    char *sAngle = strtok(NULL, ":");
-    if(sAngle == NULL) {
-      printlnError(FormatErrorMsg);
-      return;
-    }
-    //contrain from -90 to 90 degrees
-    if(!toInt(sAngle, &angle) || angle < 200 || angle > 824) {
-      printlnError("Error: angle must be between 200 and 824");
-      return;
-    }
-    
-    angles[count].id = id;
-    angles[count].angle = angle;
+    if(parsePositionTuple(arg, angles + count) == false) return;
     count++;
   }
   
@@ -286,12 +379,12 @@ void cmdSetServoPosition() {
     return;
   }
   
-  if(relaxed) {
+  /*if(relaxed) {
     relaxed = false;
     Servos.readPose();
-  }
+  }*/
 
-  long msLargestTimeToMove = 0;
+  long msLongest = 0;
   for(int i = 0; i < count; i++) {
     int id = angles[i].id;
     int newAngle = angles[i].angle;
@@ -316,12 +409,16 @@ void cmdSetServoPosition() {
   printAck(msLargestTimeToMove);
   printlnAck(" ms");
   
-  Servos.interpolateSetup(round(msLargestTimeToMove));
+  Servos.interpolateSetup(msLongest);
+#endif
 }
 
-void setServoPositionBinary(char *buffer, int len) {
+// Takes an array of packed servo positions. Position == 0 is no-op.
+void interpolateServosBinary(char *buffer, int len) {
+#if 0
   int numAngles = min(len/2, NumServos);
-  long msLargestTimeToMove = 0;
+  long msLongest = 0;  // move time required by any move
+  int maxSpeedInv = invertMaxSpeed();  // convert to ms per angle-unit to simplify calculation
   
   if(relaxed) {
     relaxed = false;
@@ -343,10 +440,13 @@ void setServoPositionBinary(char *buffer, int len) {
     
     int id = Servos.getId(i);
     int curAngle = Servos.getCurPose(id);
-    if(curAngle < 1 || curAngle > 2000) continue;
+
+    // do not calculate movement time for or move a servo if it is incommunicado 
+    // or we don't know where it currently is
+    if(curAngle < 1 || curAngle > 1024) continue;
     
-    long time = abs(curAngle - newAngle) * gMaxSpeedInv;
-    msLargestTimeToMove = max(msLargestTimeToMove, time);
+    long time = abs(curAngle - newAngle) * maxSpeedInv;
+    msLongest = max(msLongest, time);
     
     printInfo("moving id ");
     printInfo(id);
@@ -362,18 +462,23 @@ void setServoPositionBinary(char *buffer, int len) {
   printAck(msLargestTimeToMove);
   printlnAck(" ms");
   
-  Servos.interpolateSetup(round(msLargestTimeToMove));
+  Servos.interpolateSetup(msLongest);
+#endif
 }
 
 // argument is number of angles to be transmitted
-void cmdSetServoPositionBinary() {
+void cmdInterpolateServosBinary() {
   int numAngles = NumServos;
 
   if(char *arg = CmdMgr.next()) {
-    int n;
-    if(!toInt(arg, &n) || n < 1 || n > 127) {
-      printAlways("Error: argument is number of servo angles to be sent, should be in [1, 127]. Assuming ");
+    char *end;
+    int n = strtol(arg, &end, 10);
+    
+    // keep going even if there's an error, because the host will probably send the data anyway?
+    if(end != '\0' || n < 1 || n > 253) {
+      printAlways("Error: argument is number of servo angles to be sent, should be in [1, 253]. Assuming ");
       printlnAlways(NumServos);
+      //return;
     }
     else {
       numAngles = n;
@@ -383,7 +488,32 @@ void cmdSetServoPositionBinary() {
   printAck("Expecting ");
   printAck(numAngles*2);
   printlnAck(" bytes");
-  CmdMgr.enterBinaryMode(numAngles*2, setServoPositionBinary);
+  CmdMgr.enterBinaryMode(numAngles*2, interpolateServosBinary);
+}
+
+
+void loadPose(int pos = 512) {
+
+  for(int i = 0; i < NumServos; i++) {
+    int id = Servos.getId(i);
+    Servos.setCurPose(id, pos);
+  }
+
+  broadcastSpeed();
+  Servos.writePose();
+  Serial.print("Moving servos to position: ");
+  Serial.println(pos);
+}
+
+void cmdLoadPose() {
+  int Positions[] = {490, 500, 512, 612, 712};
+  int NumPositions = sizeof(Positions) / sizeof(*Positions);
+  
+  if(char *arg = CmdMgr.next()) {
+    int index = *arg - '1';
+    if(index < 0 || index >= NumPositions) return;
+    loadPose(Positions[index]);
+  }
 }
 
 void cmdSetPrintLevel() {  
@@ -412,14 +542,16 @@ void setup() {
   // Safe guard: the move interpolation code moves all servos, so if a servo starts
   // off-center, and we move another servo, the first servo will move to center (the default "next" position).
   // So set the target position of each servo to its current position
-  for(int i = 0; i < NumServos; i++) {
+  /*for(int i = 0; i < NumServos; i++) {
     int id = Servos.getId(i);
     Servos.setNextPose(id, Servos.getCurPose(id));
-  }
+  }*/
   
   Serial.begin(38400);
   readVoltage();
   readServoPositions();
+  
+  loadPose();
 }
 
 void loop() {

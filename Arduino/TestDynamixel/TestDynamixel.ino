@@ -185,7 +185,7 @@ void move(int pose_[], int poseSize) {
   setRX(0);
 }
 
-// Accept one of two types of rguments: either a list of angles starting from FirstID,
+// Accept one of two types of arguments: either a list of angles starting from FirstID,
 // or a list of id:angle pairs.
 // We shall constrain the angle to 200 to 824, and assume and consider 0 a no-op.
 void cmdMove() {

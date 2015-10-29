@@ -57,6 +57,7 @@ class BioloidController
     int readPose(int index);					// read in the position of a single servo
     void writePose();                           // write a pose out to the servos
     int getCurPose(int id);                     // get a servo value in the current pose
+    void setCurPose(int id, int pos);           // set a servo value in the current pose
     int getNextPose(int id);                    // get a servo value in the next pose
     void setNextPose(int id, int pos);          // set a servo value in the next pose
     void setId(int index, int id);              // set the id of a particular storage index

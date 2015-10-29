@@ -115,6 +115,15 @@ void BioloidController::setNextPose(int id, int pos){
         }
     }
 }
+/* set a servo value in the next pose */
+void BioloidController::setCurPose(int id, int pos){
+    for(int i=0; i<poseSize; i++){
+        if( id_[i] == id ){
+            pose_[i] = (pos << BIOLOID_SHIFT);
+            return;
+        }
+    }
+}
 
 /* write pose out to servos using sync write. */
 void BioloidController::writePose(){
