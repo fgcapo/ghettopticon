@@ -1,10 +1,6 @@
 import time, threading
 from console import *
 from cue import *
-#from scene3 import restAfterWord, Cue, DMX, programExit
-
-# default cuesheet loading at start
-CuesFilename = 'cuesheet3.txt'
 
 class Scene:
   def __init__(self, name):

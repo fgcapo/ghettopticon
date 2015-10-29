@@ -1,8 +1,10 @@
 import sys, os, os.path, threading, ast, time
 from console import * 
 from cue import *
-from cueengine import CueEngine, CuesFilename
+from cueengine import CueEngine
 from trackspot import TrackSpot
+
+CuesFilename = 'cuesheet4.txt'
 
 CueMgr = CueEngine()
 
@@ -32,15 +34,19 @@ class View:
 
 
 class LightArmView:
+  def setBoth(self, id, pos):
+    ucServos.set(id, pos)
+    ucServos.set(id+1, pos)
+
   def __init__(self):
     self.lineInputKey = 'c'
 
     # ID of base servo; will they all be the same dimension?
     # other servo will be ID+1
-    self.armIDs = [21, 29, 27, 17]#, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    for id in self.armIDs:
-      ucServos.set(id, 512)
-      ucServos.set(id+1, 512)
+    self.armIDs = [21, 29, 27, 17]#,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    for id in self.armIDs: self.setBoth(id, 512)
+
+    self.setBoth(25, 512)  # servos changed IDs; init the old ID too
 
     self.PageWidth = 4    
     self.ixCursor = 0
@@ -389,7 +395,7 @@ dmxView = SliderView()
 lightArmView = LightArmView() 
 cueView = CueView()
 
-currentView = dmxView
+currentView = cueView
 
 def programExit():
   DMX.exit()

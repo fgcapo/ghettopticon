@@ -8,6 +8,29 @@ spots = [
       TrackSpot(None, 170, '8', '5', '6', '4', '9', '7'),
       TrackSpot(None, 193, 'g', 'b', 'v', 'n', 'h', 'f')]
 
+def sanitizeSpots(dmx):
+  changed = False
+  for spot in spots:
+    #if dmx[spot.intensity] == 0 and (dmx[spot.strobe] > 0 or dmx[spot.speed] > 0):
+    #  print('file "' + filename + '" has weirdness on spot', spot.firstChannel+1)
+
+    if dmx[spot.intensity] > 0 and (dmx[spot.strobe] != 255 or dmx[spot.speed] != 255):
+      print('file "' + filename + '" has weirdness on spot', spot.firstChannel+1)
+      changed = True
+      dmx[spot.strobe] = 255
+      dmx[spot.speed] = 255
+      dmx[spot.intensity] = 0
+
+  return changed
+
+def turnOffSideSpots(dmx):
+  for spot in spots[0:2]:
+    dmx[spot.strobe] = 255
+    dmx[spot.speed] = 255
+    dmx[spot.intensity] = 0
+  
+  return True
+
 for filename in os.listdir('scenes'):
 #  if not os.path.isfile(filename): continue
 
@@ -24,18 +47,8 @@ for filename in os.listdir('scenes'):
       elif isinstance(json, dict): dmx = json['DMX']
       else: raise BaseException('parse error')
 
-  changed = False
-
-  for spot in spots:
-    #if dmx[spot.intensity] == 0 and (dmx[spot.strobe] > 0 or dmx[spot.speed] > 0):
-    #  print('file "' + filename + '" has weirdness on spot', spot.firstChannel+1)
-
-    if dmx[spot.intensity] > 0 and (dmx[spot.strobe] != 255 or dmx[spot.speed] != 255):
-      print('file "' + filename + '" has weirdness on spot', spot.firstChannel+1)
-      changed = True
-      dmx[spot.strobe] = 255
-      dmx[spot.speed] = 255
-      dmx[spot.intensity] = 0
+#  changed = sanitizeSpots(dmx)
+  changed = turnOffSideSpots(dmx)
 
   if changed: 
     with open('scenes/' + filename, 'w') as f:

@@ -7,18 +7,14 @@ scene BlueScrimIntro
 
 # right spot white, left spot magenta
 scene JamieIntro
-	seq 2
-		load jamie1introNS
-		fade 2 maskspoton
+	load jamie1introNS
 
 # "Charlemagne, Charlemagne, Charlemagne!"
-# "Enjoy driving you crazy"
-# light doors
+#! bring up spot on right door
 scene Olga
-	seq 3
+	seq 2
 		fade 2 maskspotoff
 		fade 2 olgaBUSNS
-		fade 2 olgaBUS
 	# Olga walks off
 	seq 2
 		fade 3 maskspotoff
@@ -29,86 +25,64 @@ scene Olga
 scene JamieBlameless
 	seq 2
 		fade 2 jamie2fleekyNS
-		fade 2 jamie2fleeky
 
 # "I do not care about about a fucking ring"
 scene FleekyBarrel
 	seq 2 
 		fade 2 maskspotoff
 		fade 2 fleekyNS
-		fade 2 maskspoton
 	# wait one rotation
 	seq 2
 		fade 2 maskspotoff
 		fade 3 blackout
 
+#! Cue Follow Spot on Jamie
+#! purple spot on Inka
 scene JamieDearSusan
 	seq 2 
-	#load jamie3dearsusanNS
 		load joycestrangelymadeNS
-		fade 3 maskspoton
 
-# Prepare on "Love will never have to do with crucifixes"
 # Wait for Inka to insert arrows and bend over backwards
 scene Inka
 	seq 2
+		load maskspotoff
 		fade 3 inkatargetspot
-		fade 2 maskspotoff
 	# Inka stands up on table
-	# need follow spot in red
-	seq 2
+	# side spot on Inka, back spot on target
+	seq 1
 		fade 3 inkarbBUSNS
-		fade 3 maskspoton
 	# Inka walks off
 	seq 2
 		fade 2 maskspotoff
 		fade 2 blackout
 
 # wait for strike, but cue when Jamie starts
-scene JamieBeforeBrad
-	seq 2
+scene JamieBeforeColin
+	seq 1
 		load jamie4bradNS
-		fade 3 maskspoton
 	# Jamie finishes
 	seq 3
 		fade 3 maskspotoff
 		fade 2 blackout
 		load colinspotdark
 
-# "Sugar with magic sprinkles"
-#scene Brad
-#	seq 1
-#		fade 2 bradNS
-#	# first trick
-#	seq 1
-#		fade 2 maskspoton
-#	# curtains begin to close
-#	seq 1
-#		fade 1.5 maskspotoff
-#	# curtains closed
-#	seq 1
-#		fade 2 blackout
-
 scene Colin
 	seq 1
-		fade 2 maskspoton
+		fade 2 colinspot
 	# Colin walks off stage right
 	seq 
 		fade 2 maskspotoff
 #		fade 2 colinexitupdate
-
  
 scene Intermission
-	seq 2 
-		fade 2 intermissionceilingbounceNBLNS
+	seq 
 		fade 2 intermissionceilingbounceNBL
-	seq 3
+	seq 2
 		fade 2 maskspotoff
 		fade 2 blackout
-#		load colinspotdark
 
+##################################################################
 
-# Colin actually leaves
 scene JamieWalktheWeb
 	seq 1
 		fade 2 colinjamie
@@ -192,7 +166,7 @@ scene BradColin
 	#music
 	seq 2
 		load ELJoyce
-		load BradColinArms
+		load LightArmsOn
 	#both enter near door
 	seq 1
 		load ELJoyce
@@ -209,6 +183,8 @@ scene BradColin
 		load EL5Joyce
 	seq 1
 		load tumbleBUS
+	seq Charibari
+		load LightArmsOff
 
 scene Closing
 	seq 3

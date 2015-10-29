@@ -102,16 +102,18 @@ class CueLoad(Cue):
     #try:
       data = loadCueFile(self.filename)
     
-      self.targetDMX = data['DMX']
-      if not isinstance(self.targetDMX, list) or not isinstance(sum(self.targetDMX), int):
-        raise BaseException('error in DMX portion')
+      self.targetDMX = None
+      if 'DMX' in data:
+        self.targetDMX = data['DMX']
+        if not isinstance(self.targetDMX, list) or not isinstance(sum(self.targetDMX), int):
+          raise BaseException('error in DMX portion')
 
       # Light Arms - may be absent
       try:
         self.leds = data['LightArm']['LEDs']
         self.servos = data['LightArm']['Servos']
       except:
-        pass
+        self.leds = self.servos = None
       #except BaseException as e:
     #  raise BaseException('Error loading file: ' + str(e))
 
@@ -119,20 +121,23 @@ class CueLoad(Cue):
   def run(self, immediate=False):
       # load the file again in case it has changed since the cuesheet was loading
       self.load()
-      current = DMX.get()
 
-      # DMX: allow for value of -1 to not change current value
-      for i in range(len(current)):
-        if self.targetDMX[i] >= 0: current[i] = self.targetDMX[i]
+      if self.targetDMX:
+        current = DMX.get()
 
-      DMX.setAndSend(0, current)
+        # DMX: allow for value of -1 to not change current value
+        for i in range(len(current)):
+          if self.targetDMX[i] >= 0: current[i] = self.targetDMX[i]
+
+        DMX.setAndSend(0, current)
 
       # Light Arms - may be absent
-      try:
-        ucLEDs.set(0, self.leds)
-        ucServos.set(self.servos)
-      except:
-        pass
+      if self.leds and self.servos:
+        try:
+          ucLEDs.set(0, self.leds)
+          ucServos.set(self.servos)
+        except:
+          pass
 
     
   # fade from current scene to new scene
@@ -169,34 +174,36 @@ class CueFade(CueLoad):
 
       # Light Arms - may be absent
       # TODO fade light arms!
-      try:
-        ucLEDs.set(0, self.leds)
-        ucServos.set(self.servos)
-      except:
-        pass
+      if self.leds and self.servos:
+        try:
+          ucLEDs.set(0, self.leds)
+          ucServos.set(self.servos)
+        except:
+          pass
 
       # DMX
-      target = self.targetDMX
-      current = DMX.get()
-      vel = [0] * len(current)
+      if self.targetDMX:
+        target = self.targetDMX
+        current = DMX.get()
+        vel = [0] * len(current)
 
-      # calculate delta for each timestep
-      # -1 means don't change
-      for i in range(len(target)):
-        if target[i] >= 0:
-          vel[i] = (target[i] - current[i]) * (timestep / self.period)
+        # calculate delta for each timestep
+        # -1 means don't change
+        for i in range(len(target)):
+          if target[i] >= 0:
+            vel[i] = (target[i] - current[i]) * (timestep / self.period)
 
-      print('                 fading for', self.period, 'seconds..', end='', flush=True)
+        print('                 fading for', self.period, 'seconds..', end='', flush=True)
 
-      # calculate new channel values, transmit and sleep
-      for t in frange(0, self.period, timestep):
-        for i in range(len(current)): current[i] += vel[i]
-        channels = [int(x) for x in current] 
-        DMX.setAndSend(0, channels)
-        if t % printPeriodPeriod == 0: print('.', end='', flush=True)
-        time.sleep(timestep)
+        # calculate new channel values, transmit and sleep
+        for t in frange(0, self.period, timestep):
+          for i in range(len(current)): current[i] += vel[i]
+          channels = [int(x) for x in current] 
+          DMX.setAndSend(0, channels)
+          if t % printPeriodPeriod == 0: print('.', end='', flush=True)
+          time.sleep(timestep)
 
-      print('DONE')
+        print('DONE')
     #except:
     #  raise BaseException('Error talking to OLA DMX server')
     # TODO other exceptions having to do with the fade math

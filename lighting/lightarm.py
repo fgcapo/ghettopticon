@@ -142,36 +142,39 @@ class Servos(SerialThread):
       if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
       elif isinstance(idOrDict, dict): self.anglesDict = idOrDict
       else: raise BaseException('bad argument to Servos.setAngle')
+      if 21 not in self.anglesDict:
+        self.anglesDict[21] = 512 # TODO hack until cues redone
+        self.anglesDict[22] = 512
       self.setServoPos()
 
     def __str__(self): return str(self.anglesDict)
 
-    def handleLine(self, line):
+    def handleLine(self, line): pass
         # read the positions of all servos, which is spread over multiple lines
         # expect the next some number of lines to be servo info
-        if line.startswith('Servo Readings:'):
-            self.numLinesToFollow = int(line[15:])
-            self.mode = 'r'
-            self.anglesDict = {}
-            print('expecting', self.numLinesToFollow, 'servo readings')
-
-        # information about a single servo, on a single line
-        elif self.mode == 'r':
-            id, pos = None, None
-            for pair in line.split():
-                kv = pair.split(':')
-                key = kv[0]
-                if   key == 'ID':  id = int(kv[1])
-                elif key == 'pos': pos = int(kv[1])
-            self.anglesDict[id] = pos
-            self.numLinesToFollow -= 1
-            
-            # done, reset mode
-            if self.numLinesToFollow == 0:
-                print(self.anglesDict)
-                self.mode = None
-                
-        #else: print(line)
+#        if line.startswith('Servo Readings:'):
+#            self.numLinesToFollow = int(line[15:])
+#            self.mode = 'r'
+#            self.anglesDict = {}
+#            print('expecting', self.numLinesToFollow, 'servo readings')
+#
+#        # information about a single servo, on a single line
+#        elif self.mode == 'r':
+#            id, pos = None, None
+#            for pair in line.split():
+#                kv = pair.split(':')
+#                key = kv[0]
+#                if   key == 'ID':  id = int(kv[1])
+#                elif key == 'pos': pos = int(kv[1])
+#            self.anglesDict[id] = pos
+#            self.numLinesToFollow -= 1
+#            
+#            # done, reset mode
+#            if self.numLinesToFollow == 0:
+#                print(self.anglesDict)
+#                self.mode = None
+#                
+#        #else: print(line)
 
     # argument is a dictionary of id:angle
     # angles are 0-1023; center is 512; safe angle range is 200-824
