@@ -51,13 +51,17 @@ class LightArmView:
   def inSingleMode(self):
     return self.mode == 0
 
+  def xIndexToID(self, index): return index * 2
+  def yIndexToID(self, index): return index * 2 + 1
+
+
   # retrieve angle based on arm index on screen
   # type must be 'x' or 'y'
   def getAngle(self, type, index=None):
     if index is None: index = self.ixCursor
-    id = 2 * index
-    if type == 'y': id += 1
-    elif type != 'x': raise BaseException('bad dimension')
+    if type == 'x': id = self.xIndexToID(index)
+    elif type == 'y': id = self.yIndexToID(index)
+    else: raise BaseException('bad dimension')
     return Arms.getAngle(id)
 
   # returns a list of the selected arms' indices
@@ -71,8 +75,8 @@ class LightArmView:
   def selectedIDs(self):
     ids = []
     for i in self.selected():
-      ids.append(2*i)
-      ids.append(2*i + 1)
+      ids.append(self.xIndexToID(i))
+      ids.append(self.yIndexToID(i))
     return ids
      
   # return starting index of group that cursor is in
@@ -89,13 +93,14 @@ class LightArmView:
   def modX(self, inc):
     ids = self.selected()
     for id in ids:
+      id = 2 * id
       Arms.setAngle(id, fitServoRange(Arms.getAngle(id) + inc))
 
   # add increment to the angle of the Y servo of the currently selected arm(s)
   def modY(self, inc):
     ids = self.selected()
     for id in ids:
-      id += 1
+      id = 2 * id + 1
       Arms.setAngle(id, fitServoRange(Arms.getAngle(id) + inc))
 
   def modI(self, inc):
@@ -152,7 +157,7 @@ class LightArmView:
 
   def display(self):
     clearScreen()
-    numArms = len(self.armIDs)
+    numArms = 4   # TODO get this from Arms
 
     def printHSep(firstColBlank=True):
       if firstColBlank: print('   |', end='')
@@ -369,7 +374,7 @@ dmxView = SliderView()
 lightArmView = LightArmView() 
 cueView = CueView()
 
-currentView = cueView
+currentView = lightArmView
 
 def programExit():
   DMX.exit()

@@ -139,15 +139,56 @@ class Servos(SerialThread):
     def getAngle(self, id): return self.anglesDict[id]
 
     def setAngle(self, idOrDict, angle=None):
-      if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
-      elif isinstance(idOrDict, dict): self.anglesDict = idOrDict
+      if isinstance(idOrDict, int):
+        self.anglesDict[idOrDict] = angle
+      elif isinstance(idOrDict, dict):
+        for id,angle in idOrDict.items(): self.anglesDict[id] = angle
       elif isinstance(idOrDict, list): 
         for id in idOrDict: self.anglesDict[id] = angle
       else: raise BaseException('bad argument to Servos.setAngle')
 
-     self.setServoPos()
+      self.setServoPos()
 
     def __str__(self): return str(self.anglesDict)
+
+    # argument is a dictionary of id:angle
+    # angles are 0-1023; center is 512; safe angle range is 200-824
+    def setServoPos(self, binary=False):
+        print(self.anglesDict)
+        if not self.valid(): return
+
+        # send a text command which says to expect a block of binary
+        # then send the angles as an array of 16-bit ints in order
+        # angle is set to 0 for missing IDs
+        if binary:
+            maxID = 0  # IDs start at 1, so numAngles = highest ID
+            for id,angle in anglesDict.items(): 
+                maxID = max(maxID, id)
+
+            cmd = 'B ' + str(maxID) + '\n'
+            #print(cmd)
+            self.write(str.encode(cmd))
+
+            buf = bytearray()
+            for id in range(1, maxID+1):
+                angle = 0
+                if id in anglesDict: angle = anglesDict[id]
+                
+                # 16-bit little endian
+                buf += struct.pack('<H', angle)
+            
+            print(buf)
+            ucServos.write(buf)
+
+        # text protocol of id:angle pairs
+        else:
+            cmd = 's'
+            for id,angle in self.anglesDict.items():
+                cmd += ' ' + str(id) + ':' + str(angle)
+
+            cmd += '\n'
+            #print(cmd)
+            self.write(str.encode(cmd))
 
     def handleLine(self, line): pass
         # read the positions of all servos, which is spread over multiple lines
@@ -211,6 +252,7 @@ class NetworkRoute:
     self.port = port
     self.socket = None
 
+  def exit(self): pass
   def getAngle(self, id): pass
   def setAngle(self, idOrDict, angle=None): pass
 
@@ -224,14 +266,21 @@ class Servo:
 class LightArms:
 
   def __init__(self):
+      self.routes = []
+
       # only 4 channels of LEDs
       serial = LEDs(LEDsPath)
+      self.routes.append(serial)
       network = NetworkRoute(LEDsPort)
+      self.routes.append(network)
+
       self.leds = [serial, network, network, network]
 
       # servo routes
       serial = Servos(ServosPath)
+      self.routes.append(serial)
       network = NetworkRoute(ServosPort)
+      self.routes.append(network)
 
        # index is external ID
       self.servos = [
@@ -255,9 +304,11 @@ class LightArms:
       ]
 
       # TODO command to center for now, but read position in future
-      for s in self.servos:
-        s.route.setAngle(s.id, 512)
+      ids = [s.id for s in self.servos if s.route == serial]
+      serial.setAngle(ids, 512)
 
+  def exit(self):
+    for route in self.routes: route.exit()
      
   def getLED(self, index):
     route = self.leds[index]
@@ -269,12 +320,16 @@ class LightArms:
 
   def getAngle(self, index):
     servo = self.servos[index]
-    return servo.route.getAngle(index)
+    return servo.route.getAngle(servo.id)
 
   def setAngle(self, indexOrDict, angle=None):
     print(indexOrDict)
     if isinstance(indexOrDict, int):
       indexOrDict = {indexOrDict:angle}
+    elif isinstance(indexOrDict, list):
+      d = {}
+      for i in indexOrDict: d[i] = angle
+      indexOrDict = d
     
     if isinstance(indexOrDict, dict):
       # split a dict into multiple dicts based on each ID's route
@@ -287,7 +342,6 @@ class LightArms:
       for route in dicts:
         route.setAngle(dicts[route])
 
-    elif isinstance(idOrDict, list): raise BaseException()
     #  for id in idOrDict: self.anglesDict[id] = angle
     
 
