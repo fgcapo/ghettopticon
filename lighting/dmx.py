@@ -74,7 +74,7 @@ class DmxChannels:
         self.client.SendDmx(1, self.data)
         
     # pass a start channel and any number of channel values
-    # values are integers 0-255
+    # values are integers 0-255; -1 is no-op
     # you must call send to transmit the changes
     # can say set([values]), set(index, value) or set(index, [values])
     def set(self, channel, values=None):
@@ -85,7 +85,7 @@ class DmxChannels:
         if isinstance(values, int): values = [values]
         #print('DMX.set channel', index, '=', values)
         for v in values:
-            if self.data[channel] != v:
+            if v != -1 and self.data[channel] != v:
                 self.data[channel] = v
                 self.dataChanged = True
             channel += 1

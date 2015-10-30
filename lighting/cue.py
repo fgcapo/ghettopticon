@@ -123,13 +123,7 @@ class CueLoad(Cue):
       self.load()
 
       if self.targetDMX:
-        current = DMX.get()
-
-        # DMX: allow for value of -1 to not change current value
-        for i in range(len(current)):
-          if self.targetDMX[i] >= 0: current[i] = self.targetDMX[i]
-
-        DMX.setAndSend(0, current)
+        DMX.setAndSend(0, self.targetDMX)
 
       # Light Arms - may be absent
       if self.leds and self.servos:
@@ -198,11 +192,13 @@ class CueFade(CueLoad):
         # calculate new channel values, transmit and sleep
         for t in frange(0, self.period, timestep):
           for i in range(len(current)): current[i] += vel[i]
-          channels = [int(x) for x in current] 
+          channels = [round(x) for x in current] 
           DMX.setAndSend(0, channels)
           if t % printPeriodPeriod == 0: print('.', end='', flush=True)
           time.sleep(timestep)
 
+        # make sure we arrive at the target numbers, as rounding error may creep in
+        DMX.setAndSend(0, target)
         print('DONE')
     #except:
     #  raise BaseException('Error talking to OLA DMX server')

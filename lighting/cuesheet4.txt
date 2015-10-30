@@ -4,29 +4,27 @@ scene BlueScrimIntro
 	seq before show
 		fade 2 beforeshow
 	seq fade out for curtain
-		fade 2 maskspotoff
-		fade 7 blackout
+		fade 8 blackout
 
-# right spot white, left spot magenta
+#! manual left spot
 scene JamieIntro
 	load jamie1introNS
 
 # "Charlemagne, Charlemagne, Charlemagne!"
-#! manual spot on right door
+#! manual left spot on right door
 scene Olga
 	seq fade in
 		fade 2 maskspotoff
 		fade 2 olgaBUSNS
 		fade 2 olgaBUS
 	seq fade out
-		fade 3 maskspotoff
-		fade 3 blackout
+		#fade 3 maskspotoff
+		fade 5 blackout
 
 # wait 2 seconds
-# right spot white, left spot blue
+#! optional left spot
 scene JamieBlameless
-	seq 
-		fade 2 jamie2fleekyNS
+	fade 2 jamie2fleekyNS
 
 #! manual left spot
 scene FleekyBarrel
@@ -35,33 +33,31 @@ scene FleekyBarrel
 		fade 2 fleekyNS
 	# wait one rotation
 	seq fade out
-		fade 2 maskspotoff
-		fade 3 blackout
+		#fade 2 maskspotoff
+		fade 4 blackout
 
-#! manual left spot
+#! manual left spot; no follow spot?
 scene JamieBeforeColin
-	seq 1
+	seq
 		fade 2 jamie4bradNS
 	seq fade out
-		fade 3 maskspotoff
-		fade 2 blackout
+		#fade 2 maskspotoff
+		fade 3 blackout
 		load colinspotdark
 
+# curtain with Colin behind it stops
 scene Colin
-	seq
-		fade 2 colinspot
-	# Colin successfully exits stage right
-	seq 
-		fade 2 maskspotoff
-		fade 2 colinexitupdate
+	fade 1 colinspot
+	#! Cue cut follow spot
+	# Jamie interacts with Colin
+	seq fade in lights for Jamie-Colin interlude
+		fade 3 colinexitupdate
 
-# Jamie gets microphone
-# TODO turn on center spot red?
 #! Cue red Follow Spot on Jamie
 #! manual left spot on Inka
+# optional center spot red
 scene JamieDearSusan
-	seq 2 
-		load joycestrangelymadeNS
+	fade 2 joycestrangelymadeNS
 
 # Inka bends over backwards with arrows
 scene Inka
@@ -69,20 +65,16 @@ scene Inka
 		load maskspotoff
 		fade 3 inkatargetspot
 	# Inka stands up on table
-	# side spot on Inka, back spot on target
-	seq 1
-		# TODO save inkarbBUS as inkarbBUSNS with left spot off
+	#! manual left spot on Inka, back spot on target
+	seq
 		fade 3 inkarbBUSNS
 	seq 2 fade out
-		fade 2 maskspotoff
-		fade 2 blackout
+		#fade 2 maskspotoff
+		fade 4 blackout
  
 scene Intermission
-	seq 
-		fade 2 intermissionceilingbounceNBL
-	seq 2
-		fade 2 maskspotoff
-		fade 2 blackout
+	fade 2 intermissionceilingbounceNBL
+	fade 2 blackout
 
 ##################################################################
 
@@ -90,6 +82,7 @@ scene JamieWalktheWeb
 	seq 1
 		fade 2 colinjamie
 
+#! manual left spot
 scene FleekyWalktheWeb
 	seq fade in
 		fade 2 maskspotoff
@@ -101,28 +94,22 @@ scene FleekyWalktheWeb
 
 # Jamie enters stage right
 scene JamieGirlinTheHallway
-	seq 
-		fade 3 jamiegirlhallwaylessfillCHECKNS 
+	fade 3 jamiegirlhallwaylessfillCHECKNS 
 
 # Cut follow spot when Jamie leaves
 # Wait for Olga to set hoop and leaves
 scene RachelHoop
-	seq TODO this fade doesn't seem to work
-		fade 4 rachel
-
-# Rachel lands from hoop
-scene EndRachelGirlinTheHallway
-	seq 2
-		fade 2 maskspotoff
-		fade 3 jamiegirlhallwaylessfillCHECKNS
-	# Olga unstraps hoop and leaves
-	# Or Jamie says "L. Ron Hubbard"
-	seq 1
-		fade 2 blackout
+	fade 4 rachel
+	# Rachel lands from hoop
+	fade 3 jamiegirlhallwaylessfillCHECKNS
 
 #! manual left spot
+# Olga unstraps hoop and leaves
+# Or Jamie says "L. Ron Hubbard"
 scene JamieGodandtheMan
-	fade 2 jamiegodandthemanBUS
+	seq
+		#fade 2 blackout
+		fade 2 jamiegodandthemanBUS
 
 scene MicahGodandtheMan
 	seq fade in
@@ -132,11 +119,10 @@ scene MicahGodandtheMan
 	seq red transition
 		fade 2 micahshift
 	#! try to hit blackout on music fade
-	seq fade out
-		fade 2 maskspotoff
-		load blackout
+	load blackout
 
-# Cue follow spot stage right simultaneously
+#! Cue follow spot stage right simultaneously (90% aperture)
+# Follow spot will get a bit of the white wall on the left
 scene JamieExitInterview
 	load exitinterviewBUS
 
@@ -145,23 +131,19 @@ scene RachelPetri
 	seq fade in
 		fade 2 maskspotoff
 		fade 2 rachelpetriNS
-		# TODO get location from rachelpetri
 	# music stops, Rachel spinning, then drops
 	seq cut lights
 		fade 2 rachelpetriNS
 		load blackout
 
 scene JamieAnalgesia
-	seq fade in
-		fade 2 WSBFNS
-	seq fade out spot
-		fade 2 maskspotoff
+	fade 2 WSBFNS
+	fade 2 maskspotoff
+	fade 2 blackout
 
 #! Turn on projector
 #! first cue before music
 scene BradColin
-	seq black out before music
-		fade 2 blackout
 	seq music starts
 		load ELOneDoor
 		load LightArmsOn
