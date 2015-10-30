@@ -1,7 +1,9 @@
+#! check TODOs
+
 scene BlueScrimIntro
-	seq 1	
+	seq before show
 		fade 2 beforeshow
-	seq 2
+	seq fade out for curtain
 		fade 2 maskspotoff
 		fade 7 blackout
 
@@ -10,39 +12,58 @@ scene JamieIntro
 	load jamie1introNS
 
 # "Charlemagne, Charlemagne, Charlemagne!"
-#! bring up spot on right door
+#! manual spot on right door
 scene Olga
-	seq 2
+	seq fade in
 		fade 2 maskspotoff
 		fade 2 olgaBUSNS
-	# Olga walks off
-	seq 2
+		fade 2 olgaBUS
+	seq fade out
 		fade 3 maskspotoff
 		fade 3 blackout
 
 # wait 2 seconds
 # right spot white, left spot blue
 scene JamieBlameless
-	seq 2
+	seq 
 		fade 2 jamie2fleekyNS
 
-# "I do not care about about a fucking ring"
+#! manual left spot
 scene FleekyBarrel
-	seq 2 
+	seq fade in
 		fade 2 maskspotoff
 		fade 2 fleekyNS
 	# wait one rotation
-	seq 2
+	seq fade out
 		fade 2 maskspotoff
 		fade 3 blackout
 
-#! Cue Follow Spot on Jamie
-#! purple spot on Inka
+#! manual left spot
+scene JamieBeforeColin
+	seq 1
+		fade 2 jamie4bradNS
+	seq fade out
+		fade 3 maskspotoff
+		fade 2 blackout
+		load colinspotdark
+
+scene Colin
+	seq
+		fade 2 colinspot
+	# Colin successfully exits stage right
+	seq 
+		fade 2 maskspotoff
+		fade 2 colinexitupdate
+
+# Jamie gets microphone
+# TODO turn on center spot red?
+#! Cue red Follow Spot on Jamie
+#! manual left spot on Inka
 scene JamieDearSusan
 	seq 2 
 		load joycestrangelymadeNS
 
-# Wait for Inka to insert arrows and bend over backwards
+# Inka bends over backwards with arrows
 scene Inka
 	seq 2
 		load maskspotoff
@@ -50,29 +71,11 @@ scene Inka
 	# Inka stands up on table
 	# side spot on Inka, back spot on target
 	seq 1
+		# TODO save inkarbBUS as inkarbBUSNS with left spot off
 		fade 3 inkarbBUSNS
-	# Inka walks off
-	seq 2
+	seq 2 fade out
 		fade 2 maskspotoff
 		fade 2 blackout
-
-# wait for strike, but cue when Jamie starts
-scene JamieBeforeColin
-	seq 1
-		load jamie4bradNS
-	# Jamie finishes
-	seq 3
-		fade 3 maskspotoff
-		fade 2 blackout
-		load colinspotdark
-
-scene Colin
-	seq 1
-		fade 2 colinspot
-	# Colin walks off stage right
-	seq 
-		fade 2 maskspotoff
-#		fade 2 colinexitupdate
  
 scene Intermission
 	seq 
@@ -88,99 +91,102 @@ scene JamieWalktheWeb
 		fade 2 colinjamie
 
 scene FleekyWalktheWeb
-	seq 3
+	seq fade in
 		fade 2 maskspotoff
 		fade 2 wtwNS
 		fade 2 wtwred
-	seq 2
+	seq fade out
 		fade 2 maskspotoff
 		fade 2 blackout
 
+# Jamie enters stage right
 scene JamieGirlinTheHallway
-	seq 2
+	seq 
 		fade 3 jamiegirlhallwaylessfillCHECKNS 
-	seq 1
-		fade 2 maskspotoff
 
-#Olga leaves
-scene Rachel
-	seq 3
-		fade 3 rachel
+# Cut follow spot when Jamie leaves
+# Wait for Olga to set hoop and leaves
+scene RachelHoop
+	seq TODO this fade doesn't seem to work
+		fade 4 rachel
 
-#Rachel leaves
+# Rachel lands from hoop
 scene EndRachelGirlinTheHallway
 	seq 2
 		fade 2 maskspotoff
 		fade 3 jamiegirlhallwaylessfillCHECKNS
-	#Olga leaves	
+	# Olga unstraps hoop and leaves
+	# Or Jamie says "L. Ron Hubbard"
 	seq 1
 		fade 2 blackout
 
+#! manual left spot
 scene JamieGodandtheMan
-	seq 1
-		fade 2 jamiegodandthemanBUS
+	fade 2 jamiegodandthemanBUS
 
 scene MicahGodandtheMan
-	seq 2
+	seq fade in
 		fade 2 maskspotoff
 		fade 2 micah
-	#stage right to put on shirt...?
-	seq 1
+    #! manual left spot
+	seq red transition
 		fade 2 micahshift
-	seq 2
+	#! try to hit blackout on music fade
+	seq fade out
 		fade 2 maskspotoff
 		load blackout
 
+# Cue follow spot stage right simultaneously
 scene JamieExitInterview
-	seq 2
-		load exitinterviewBUSNS
+	load exitinterviewBUS
 
-#Jamie walks off
+#! manual left spot
 scene RachelPetri
-	seq rachelpetri
+	seq fade in
 		fade 2 maskspotoff
 		fade 2 rachelpetriNS
+		# TODO get location from rachelpetri
 	# music stops, Rachel spinning, then drops
-	seq petristop
+	seq cut lights
 		fade 2 rachelpetriNS
 		load blackout
 
 scene JamieAnalgesia
-	seq lastpoem
+	seq fade in
 		fade 2 WSBFNS
-	#Jamie finishes
-	seq endlastpoem
+	seq fade out spot
 		fade 2 maskspotoff
 
+#! Turn on projector
 #! first cue before music
 scene BradColin
-	seq blackoutbeforelights
+	seq black out before music
 		fade 2 blackout
 	seq music starts
-		load ELJoyce
+		load ELOneDoor
 		load LightArmsOn
 	#both enter near door
 	seq 1
-		load ELJoyce
+		load ELOneDoor
 	#enter separate doors
 	seq 1
-		load EL3BUS
+		load ELStageLeft
 	seq 1
-		load EL4
+		load ELStageCenter
 	seq 1
-		load prestageJoyce
+		load ELDrinkTea
 	seq 1
-		load tumbleBUS
+		load ELOnStage
 	seq 1
-		load EL5restage
-	seq 1
-		load tumbleBUS
-	seq Charibari
+		load ELOneDoor
+	seq Last tricks and charibari
+		load ELOnStage
 		load LightArmsOff
 
+#! unhide projector
 scene Closing
-	seq 3
+	seq
 		fade 2 maskspotoff
 		fade 2 blackout
-		fade 3 bluescrim
+		fade 3 beforeshow
 
