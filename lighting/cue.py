@@ -188,14 +188,27 @@ class CueFade(CueLoad):
             vel[i] = (target[i] - current[i]) * (timestep / self.period)
 
         print('                 fading for', self.period, 'seconds..', end='', flush=True)
+        startTime = time.time()
+        endTime = startTime + self.period
+        nextTime = startTime + timestep
+        nextPrintTime = startTime + printPeriodPeriod
 
-        # calculate new channel values, transmit and sleep
-        for t in frange(0, self.period, timestep):
+        while 1:
+          # calculate new channel values and transmit
           for i in range(len(current)): current[i] += vel[i]
           channels = [round(x) for x in current] 
           DMX.setAndSend(0, channels)
-          if t % printPeriodPeriod == 0: print('.', end='', flush=True)
-          time.sleep(timestep)
+
+          now = time.time()
+
+          # print a period every so often
+          if now >= nextPrintTime:
+            print('.', end='', flush=True)
+            nextPrintTime += printPeriodPeriod
+
+          if now > endTime: break
+          nexTime += timestep
+          time.sleep(nextTime - time.time())
 
         # make sure we arrive at the target numbers, as rounding error may creep in
         DMX.setAndSend(0, target)

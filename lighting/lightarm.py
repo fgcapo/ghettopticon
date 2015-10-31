@@ -141,7 +141,7 @@ class Servos(SerialThread):
     def set(self, idOrDict, angle=None):
       if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
       elif isinstance(idOrDict, dict): self.anglesDict = idOrDict
-      else: raise BaseException('bad argument to Servos.setAngle')
+      else: raise TypeError('bad argument to Servos.setAngle')
       if 21 not in self.anglesDict:
         self.anglesDict[21] = 512 # TODO hack until cues redone
         self.anglesDict[22] = 512

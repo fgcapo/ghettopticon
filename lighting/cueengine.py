@@ -2,6 +2,7 @@ import time, threading
 from console import *
 from cue import *
 
+
 class Scene:
   def __init__(self, name):
     self.name = name
@@ -127,14 +128,22 @@ class CueEngine:
               if indent.find(' ') >= 0: seenSpace = True
               if indent.find('\t') >= 0: seenTab = True
               if seenSpace and seenTab:
-                raise BaseException('The cue file mixes spaces and tabs.  Please use one or the other')
+                raise TabError('The cue file mixes spaces and tabs.  Please use one or the other')
               
               # remove cmds with <= indent, because their block/revelance is over
-              # TODO handle this indentation error case:
+              pops = 0
+              while indentLen < topIndentLen():
+                popIndent()
+                pops += 1
+              
+              # did we pop to an previously unused indent? Handle this case:
               # s
               #   s
               #  s
-              while indentLen <= topIndentLen():
+              if pops > 0 and indentLen > topIndentLen():
+                raise IndentationError('Indentation level does not match a previous block')
+
+              if indentLen == topIndentLen():
                 popIndent()
 
               if cmd == 'scene':
@@ -148,6 +157,7 @@ class CueEngine:
               else:
                 print('Error unrecognized command on line', lineNum)
                 print('Text:', line)
+                return
 
               if thisNode:
                 topIndent()[0].add(thisNode)
@@ -157,7 +167,7 @@ class CueEngine:
             print('Error:', e)
             print('Line Number:', lineNum)
             print('Text:', line)
-            getchMsg()
+            return
 
           line = f.readline()
       self.reset()
@@ -167,4 +177,5 @@ class CueEngine:
 
 if __name__ == '__main__':
   CueMgr = CueEngine()
+  CueMgr.loadCueSheet('cuesheet.txt')
 
