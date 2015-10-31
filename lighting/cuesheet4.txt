@@ -40,6 +40,7 @@ scene FleekyBarrel
 scene JamieBeforeColin
 	seq
 		fade 2 jamie4bradNS
+	# may be a delay, so turn follow spot off?
 	seq fade out
 		#fade 2 maskspotoff
 		fade 3 blackout
@@ -107,9 +108,7 @@ scene RachelHoop
 # Olga unstraps hoop and leaves
 # Or Jamie says "L. Ron Hubbard"
 scene JamieGodandtheMan
-	seq
-		#fade 2 blackout
-		fade 2 jamiegodandthemanBUS
+	fade 2 jamiegodandthemanBUS
 
 scene MicahGodandtheMan
 	seq fade in
@@ -167,8 +166,9 @@ scene BradColin
 
 #! unhide projector
 scene Closing
-	seq
+	seq fade out
 		fade 2 maskspotoff
 		fade 2 blackout
+	seq exit scene
 		fade 3 beforeshow
 
