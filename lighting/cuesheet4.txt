@@ -1,4 +1,4 @@
-#! check TODOs
+# flip power switches on both projectors
 
 scene BlueScrimIntro
 	seq before show
@@ -18,7 +18,6 @@ scene Olga
 		fade 2 olgaBUSNS
 		fade 2 olgaBUS
 	seq fade out
-		#fade 3 maskspotoff
 		fade 5 blackout
 
 # wait 2 seconds
@@ -33,34 +32,34 @@ scene FleekyBarrel
 		fade 2 fleekyNS
 	# wait one rotation
 	seq fade out
-		#fade 2 maskspotoff
 		fade 4 blackout
 
-#! manual left spot; no follow spot?
+#! manual left spot; no follow spot
+# TODO turn on center spot red
 scene JamieBeforeColin
 	seq
 		fade 2 jamie4bradNS
 	# may be a delay, so turn follow spot off?
 	seq fade out
-		#fade 2 maskspotoff
 		fade 3 blackout
 		load colinspotdark
 
 # curtain with Colin behind it stops
 scene Colin
 	fade 1 colinspot
-	#! Cue cut follow spot
+	#! Cue follow spot to cut
 	# Jamie interacts with Colin
 	seq fade in lights for Jamie-Colin interlude
 		fade 3 colinexitupdate
 
-#! Cue red Follow Spot on Jamie
+#! Cue red Follow Spot on Jamie -- TODO or center spot
 #! manual left spot on Inka
 # optional center spot red
 scene JamieDearSusan
 	fade 2 joycestrangelymadeNS
 
 # Inka bends over backwards with arrows
+#! Turn on projector and swap cable
 scene Inka
 	seq 2
 		load maskspotoff
@@ -97,10 +96,10 @@ scene FleekyWalktheWeb
 scene JamieGirlinTheHallway
 	fade 3 jamiegirlhallwaylessfillCHECKNS 
 
-# Cut follow spot when Jamie leaves
+#! Cut follow spot when Jamie leaves
 # Wait for Olga to set hoop and leaves
 scene RachelHoop
-	fade 4 rachel
+	fade 5 rachel
 	# Rachel lands from hoop
 	fade 3 jamiegirlhallwaylessfillCHECKNS
 
@@ -120,8 +119,8 @@ scene MicahGodandtheMan
 	#! try to hit blackout on music fade
 	load blackout
 
-#! Cue follow spot stage right simultaneously (90% aperture)
-# Follow spot will get a bit of the white wall on the left
+#! Cue follow spot stage right simultaneously
+# Follow spot may get a bit of the white wall on the left
 scene JamieExitInterview
 	load exitinterviewBUS
 
@@ -140,7 +139,7 @@ scene JamieAnalgesia
 	fade 2 maskspotoff
 	fade 2 blackout
 
-#! Turn on projector
+#! Turn on projector and swap cable
 #! first cue before music
 scene BradColin
 	seq music starts
@@ -169,6 +168,5 @@ scene Closing
 	seq fade out
 		fade 2 maskspotoff
 		fade 2 blackout
-	seq exit scene
 		fade 3 beforeshow
 
