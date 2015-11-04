@@ -3,6 +3,9 @@
 #include <PrintLevel.h>
 #include <SC.h>
 
+// this flag will invert PWM output (255-output), for active low devices
+#define INVERT_HIGH_AND_LOW
+
 /////////////////////////////////////////////////////////////////////////////////
 // globals
 
@@ -35,10 +38,14 @@ SerialCommand::Entry CommandsList[] = {
 //  {"B",      cmdInterpolateServosBinary},
   {"relax",  cmdRelax},
   {"torq",   cmdTorque},
+  {"pwm",    cmdPWMPins},
   {NULL,     NULL}
 };
 
 SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
+
+const int PWMPins[] = {12, 13, 14, 15};
+const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 
 const int NumServos = 32;
 BioloidController Servos(1000000);
@@ -520,6 +527,51 @@ void cmdLoadPose() {
     if(index < 0 || index >= NumPositions) return;
     loadPose(Positions[index]);
   }
+}
+
+// expects up to 6 space-delimited ints 0-255
+void cmdPWMPins() {
+  const char *SetPWMUsageMsg = "Error: takes up to 4 arguments between 0 and 255";
+
+  int channelValues[NumPWMPins];
+  int count = 0;
+  
+  while(char *arg = CmdMgr.next()) {
+    if(count >= NumPWMPins) {
+      printlnError(SetPWMUsageMsg);
+      return;
+    }
+  
+    char *end;
+    long v = strtol(arg, &end, 10);
+    if (*end != '\0' || v < 0 || v > 255) {
+      printlnError(SetPWMUsageMsg);
+      return;
+    }
+    
+    printInfo("Setting pin ");
+    printInfo(PWMPins[count]);
+    printInfo(" to ");
+    printlnInfo(v);
+    channelValues[count++] = v;
+  }
+  
+  if(count == 0) {
+    printlnError("Error: no arguments");
+    return;
+  }
+  
+  for(int i = 0; i < count; i++) {
+    int c = channelValues[i];
+#ifdef INVERT_HIGH_AND_LOW
+    c = 255 - c;
+#endif
+    analogWrite(PWMPins[i], c);
+  }
+  
+  printAck("OK set ");
+  printAck(count);
+  printlnAck(" pins");
 }
 
 void cmdSetPrintLevel() {  
