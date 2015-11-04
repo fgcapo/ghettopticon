@@ -136,49 +136,25 @@ class Servos(SerialThread):
         #for i in range(1, self.NumServos+1):
         #    self.set(i, 512)
 
-    def get(self, id): return self.anglesDict[id]
+    def getAngle(self, id): return self.anglesDict[id]
 
-    def set(self, idOrDict, angle=None):
-      if isinstance(idOrDict, int): self.anglesDict[idOrDict] = angle
-      elif isinstance(idOrDict, dict): self.anglesDict = idOrDict
+    def setAngle(self, idOrDict, angle=None):
+      if isinstance(idOrDict, int):
+        self.anglesDict[idOrDict] = angle
+      elif isinstance(idOrDict, dict):
+        for id,angle in idOrDict.items(): self.anglesDict[id] = angle
+      elif isinstance(idOrDict, list): 
+        for id in idOrDict: self.anglesDict[id] = angle
       else: raise TypeError('bad argument to Servos.setAngle')
-      if 21 not in self.anglesDict:
-        self.anglesDict[21] = 512 # TODO hack until cues redone
-        self.anglesDict[22] = 512
+
       self.setServoPos()
 
     def __str__(self): return str(self.anglesDict)
 
-    def handleLine(self, line): pass
-        # read the positions of all servos, which is spread over multiple lines
-        # expect the next some number of lines to be servo info
-#        if line.startswith('Servo Readings:'):
-#            self.numLinesToFollow = int(line[15:])
-#            self.mode = 'r'
-#            self.anglesDict = {}
-#            print('expecting', self.numLinesToFollow, 'servo readings')
-#
-#        # information about a single servo, on a single line
-#        elif self.mode == 'r':
-#            id, pos = None, None
-#            for pair in line.split():
-#                kv = pair.split(':')
-#                key = kv[0]
-#                if   key == 'ID':  id = int(kv[1])
-#                elif key == 'pos': pos = int(kv[1])
-#            self.anglesDict[id] = pos
-#            self.numLinesToFollow -= 1
-#            
-#            # done, reset mode
-#            if self.numLinesToFollow == 0:
-#                print(self.anglesDict)
-#                self.mode = None
-#                
-#        #else: print(line)
-
     # argument is a dictionary of id:angle
     # angles are 0-1023; center is 512; safe angle range is 200-824
     def setServoPos(self, binary=False):
+        print(self.anglesDict)
         if not self.valid(): return
 
         # send a text command which says to expect a block of binary
@@ -214,13 +190,41 @@ class Servos(SerialThread):
             #print(cmd)
             self.write(str.encode(cmd))
 
+    def handleLine(self, line): pass
+        # read the positions of all servos, which is spread over multiple lines
+        # expect the next some number of lines to be servo info
+#        if line.startswith('Servo Readings:'):
+#            self.numLinesToFollow = int(line[15:])
+#            self.mode = 'r'
+#            self.anglesDict = {}
+#            print('expecting', self.numLinesToFollow, 'servo readings')
+#
+#        # information about a single servo, on a single line
+#        elif self.mode == 'r':
+#            id, pos = None, None
+#            for pair in line.split():
+#                kv = pair.split(':')
+#                key = kv[0]
+#                if   key == 'ID':  id = int(kv[1])
+#                elif key == 'pos': pos = int(kv[1])
+#            self.anglesDict[id] = pos
+#            self.numLinesToFollow -= 1
+#            
+#            # done, reset mode
+#            if self.numLinesToFollow == 0:
+#                print(self.anglesDict)
+#                self.mode = None
+#                
+#        #else: print(line)
+
     # takes one or a list of IDs
     # relaxes all if IDs is None
-    def relax(self, IDs):
+    def relax(self, IDs, relax=True):
       if isinstance(IDs, int): IDs = [IDs]
       elif IDs is None: IDs = self.anglesDict.keys()
 
-      cmd = 'relax'
+      if relax: cmd = 'relax'
+      else: cmd = 'torq'
       for id in IDs: cmd += ' ' + str(id)
       print(cmd)
       cmd += '\n'
@@ -235,3 +239,118 @@ class Servos(SerialThread):
     def readServos(self):
         self.write(b'r\n')
 
+
+LEDsPath = '/dev/led'
+ServosPath = '/dev/arbotix'
+
+LEDsPort = 7777
+ServosPort = 8888
+
+class NetworkRoute:
+  def __init__(self, port):
+    self.address = '10.0.0.23'
+    self.port = port
+    self.socket = None
+
+  def exit(self): pass
+  def getAngle(self, id): pass
+  def setAngle(self, idOrDict, angle=None): pass
+
+class Servo:
+  def __init__(self, route, id, invert=False):
+    self.id = id
+    self.invert = invert
+    self.relaxed = False
+    self.route = route
+
+class LightArms:
+
+  def __init__(self):
+      self.routes = []
+
+      # only 4 channels of LEDs
+      serial = LEDs(LEDsPath)
+      self.routes.append(serial)
+      network = NetworkRoute(LEDsPort)
+      self.routes.append(network)
+
+      self.leds = [serial, network, network, network]
+
+      # servo routes
+      serial = Servos(ServosPath)
+      self.routes.append(serial)
+      network = NetworkRoute(ServosPort)
+      self.routes.append(network)
+
+       # index is external ID
+      self.servos = [
+        Servo(serial, 21),              Servo(serial, 22),
+        Servo(serial, 29),              Servo(serial, 30),
+        Servo(serial, 27, invert=True), Servo(serial, 28),
+        Servo(serial, 17),              Servo(serial, 18),
+        Servo(network, 25),             Servo(network, 26),
+#        Servo(serial, 29),              Servo(serial, 30),
+#        Servo(serial, 27, invert=True), Servo(serial, 28),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 29),              Servo(serial, 30),
+#        Servo(serial, 27, invert=True), Servo(serial, 28),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 21),              Servo(serial, 22),
+#        Servo(serial, 29),              Servo(serial, 30),
+#        Servo(serial, 17),              Servo(serial, 18),
+#        Servo(serial, 27, invert=True), Servo(serial, 28),
+#        Servo(serial, 17),              Servo(serial, 18),
+      ]
+
+      # TODO command to center for now, but read position in future
+      ids = [s.id for s in self.servos if s.route == serial]
+      serial.setAngle(ids, 512)
+
+  def exit(self):
+    for route in self.routes: route.exit()
+     
+  def getLED(self, index):
+    route = self.leds[index]
+    return route.get(index)
+
+  def setLED(self, index, channel):
+    route = self.leds[index]
+    route.set(index, channel)
+
+  def getAngle(self, index):
+    servo = self.servos[index]
+    return servo.route.getAngle(servo.id)
+
+  def setAngle(self, indexOrDict, angle=None):
+    print(indexOrDict)
+    if isinstance(indexOrDict, int):
+      indexOrDict = {indexOrDict:angle}
+    elif isinstance(indexOrDict, list):
+      d = {}
+      for i in indexOrDict: d[i] = angle
+      indexOrDict = d
+    
+    if isinstance(indexOrDict, dict):
+      # split a dict into multiple dicts based on each ID's route
+      dicts = {}
+      for index,angle in indexOrDict.items():
+        servo = self.servos[index]
+        route = servo.route
+        if route not in dicts: dicts[route] = {}
+        dicts[route][servo.id] = angle
+      for route in dicts:
+        route.setAngle(dicts[route])
+
+    #  for id in idOrDict: self.anglesDict[id] = angle
+    
+
+    else: raise BaseException('bad argument to Servos.setAngle')
+
+  def __str__(self):
+    servo = {}
+    leds = []
+
+    
+    
+    return {'Servos':servos, 'LEDs':leds}
