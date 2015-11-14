@@ -85,27 +85,29 @@ class SerialThread (threading.Thread):
             self.uc.close()
             self.uc = None
 
-########################################################################
-# LED controller
-class LEDs(SerialThread):
+#######################################################################
+# dynamixel servos
+class Servos(SerialThread):
     def __init__(self, path):
-        SerialThread.__init__(self, path)        
+        SerialThread.__init__(self, path)
+        self.mode = None
+        self.numLinesToFollow = 0
+        self.anglesDict = {}
+
+        # LEDs
         self.MinValue = 0
         self.MaxValue = 255
         self.NumChannels = NumArrays
         self.values = [self.MinValue] * self.NumChannels
 
-    def __str__(self):
-      return str(self.values)
+        #self.NumServos = 4 * NumArrays
+        #for i in range(1, self.NumServos+1):
+        #    self.set(i, 512)
 
-    def handleLine(self, line):
-        #print(line)
-        return
-
-    def get(self, channel): return self.values[channel]
+    def getLED(self, channel): return self.values[channel]
 
     # arguments are PWM values 0-255
-    def set(self, channel, values):
+    def setLED(self, channel, values):
       if isinstance(values, int): values = [values]
     
       for v in values:
@@ -117,24 +119,6 @@ class LEDs(SerialThread):
       cmd += '\n'
 
       self.write(str.encode(cmd))
-
-    #def setOneLEDInvFrac(intensity):
-        # board takes intensity inverted
-        #chan1 = int(255 * (1.0 - intensity))
-        #setLEDs(chan1)
-        
-########################################################################
-# dynamixel servos
-class Servos(SerialThread):
-    def __init__(self, path):
-        SerialThread.__init__(self, path)
-        self.mode = None
-        self.numLinesToFollow = 0
-        self.anglesDict = {}
-
-        #self.NumServos = 4 * NumArrays
-        #for i in range(1, self.NumServos+1):
-        #    self.set(i, 512)
 
     def getAngle(self, id): return self.anglesDict[id]
 
@@ -149,7 +133,7 @@ class Servos(SerialThread):
 
       self.setServoPos()
 
-    def __str__(self): return str(self.anglesDict)
+    def __str__(self): return str({'LEDs':self.values, 'Servos':self.anglesDict})
 
     # argument is a dictionary of id:angle
     # angles are 0-1023; center is 512; safe angle range is 200-824
@@ -239,11 +223,7 @@ class Servos(SerialThread):
     def readServos(self):
         self.write(b'r\n')
 
-
-LEDsPath = '/dev/led'
 ServosPath = '/dev/arbotix'
-
-LEDsPort = 7777
 ServosPort = 8888
 
 class NetworkRoute:
@@ -263,18 +243,12 @@ class Servo:
     self.relaxed = False
     self.route = route
 
+  def inverse(angle): return 1024 - angle
+
 class LightArms:
 
   def __init__(self):
       self.routes = []
-
-      # only 4 channels of LEDs
-      serial = LEDs(LEDsPath)
-      self.routes.append(serial)
-      network = NetworkRoute(LEDsPort)
-      self.routes.append(network)
-
-      self.leds = [serial, network, network, network]
 
       # servo routes
       serial = Servos(ServosPath)
@@ -282,25 +256,14 @@ class LightArms:
       network = NetworkRoute(ServosPort)
       self.routes.append(network)
 
+      self.leds = [serial]
+
        # index is external ID
       self.servos = [
-        Servo(serial, 21),              Servo(serial, 22),
+        Servo(serial, 9),               Servo(serial, 10),
+        Servo(serial, 11),              Servo(serial, 12),
+        Servo(serial, 23),              Servo(serial, 24, invert=True),
         Servo(serial, 29),              Servo(serial, 30),
-        Servo(serial, 27, invert=True), Servo(serial, 28),
-        Servo(serial, 17),              Servo(serial, 18),
-        Servo(network, 25),             Servo(network, 26),
-#        Servo(serial, 29),              Servo(serial, 30),
-#        Servo(serial, 27, invert=True), Servo(serial, 28),
-#        Servo(serial, 17),              Servo(serial, 18),
-#        Servo(serial, 17),              Servo(serial, 18),
-#        Servo(serial, 29),              Servo(serial, 30),
-#        Servo(serial, 27, invert=True), Servo(serial, 28),
-#        Servo(serial, 17),              Servo(serial, 18),
-#        Servo(serial, 21),              Servo(serial, 22),
-#        Servo(serial, 29),              Servo(serial, 30),
-#        Servo(serial, 17),              Servo(serial, 18),
-#        Servo(serial, 27, invert=True), Servo(serial, 28),
-#        Servo(serial, 17),              Servo(serial, 18),
       ]
 
       # TODO command to center for now, but read position in future
@@ -309,21 +272,21 @@ class LightArms:
 
   def exit(self):
     for route in self.routes: route.exit()
-     
+
   def getLED(self, index):
     route = self.leds[index]
-    return route.get(index)
-
+    return route.getLED(index)
   def setLED(self, index, channel):
     route = self.leds[index]
-    route.set(index, channel)
+    route.setLED(index, channel)
 
   def getAngle(self, index):
     servo = self.servos[index]
-    return servo.route.getAngle(servo.id)
+    angle = servo.route.getAngle(servo.id)
+    if servo.invert: angle = Servo.inverse(angle)
+    return angle
 
   def setAngle(self, indexOrDict, angle=None):
-    print(indexOrDict)
     if isinstance(indexOrDict, int):
       indexOrDict = {indexOrDict:angle}
     elif isinstance(indexOrDict, list):
@@ -336,6 +299,7 @@ class LightArms:
       dicts = {}
       for index,angle in indexOrDict.items():
         servo = self.servos[index]
+        if servo.invert: angle = Servo.inverse(angle)
         route = servo.route
         if route not in dicts: dicts[route] = {}
         dicts[route][servo.id] = angle
@@ -348,9 +312,4 @@ class LightArms:
     else: raise BaseException('bad argument to Servos.setAngle')
 
   def __str__(self):
-    servo = {}
-    leds = []
-
-    
-    
-    return {'Servos':servos, 'LEDs':leds}
+    return 

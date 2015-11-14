@@ -31,7 +31,7 @@ SerialCommand::Entry CommandsList[] = {
   {"v",      readVoltage},
   {"r",      readServoPositions},
   {"plevel", cmdSetPrintLevel},
-//  {"speed",  cmdSetMaxSpeed},
+  {"speed",  cmdSetMaxSpeed},
   {"p",      cmdLoadPose},
   {"s",      cmdMoveServos},
 //  {"i",      cmdInterpolateServos},
@@ -39,6 +39,7 @@ SerialCommand::Entry CommandsList[] = {
   {"relax",  cmdRelax},
   {"torq",   cmdTorque},
   {"pwm",    cmdPWMPins},
+  {"circle", cmdCircle},
   {NULL,     NULL}
 };
 
@@ -54,7 +55,7 @@ const int BroadcastID = 254;
 
 // When moving servos without interpolating, set this speed on the servos.
 // The units are servo specific, range [1-1023].
-int gServoSpeed = 80;
+int gServoSpeed = 100;
 
 // When an interpolating move is requested, the servos will move at different speeds in order to
 // arrive at the target position simultaneously. But movement time will be constrained so that
@@ -265,7 +266,7 @@ void cmdTorque() {
   printlnAck(" Servos");
 }
 
-/*
+
 // if no argument, prints the maximum speed
 // if one argument, sets the maximum speed and then prints it
 // Units to the user are angle-units per second, valid range [1-1000]
@@ -277,18 +278,25 @@ void cmdSetMaxSpeed() {
       return;
     }
 
-    double speed;
-    if(!toDouble(arg, &speed) || speed < 1 || speed > 1000) {
+    char *end;
+    double speed = strtod(arg, &end);
+
+    if(*end != '\0' || speed < 1 || speed > 1000) {
       printlnError("Error: speed is in angle-units per second; between 1 and 1000");
       return;
     }
     
-    gMaxInterpolationSpeed = (int)(1000.0 / speed);  // convert to ms per angle-unit
+    //gMaxInterpolationSpeed = (int)(1000.0 / speed);  // convert to ms per angle-unit
+    gServoSpeed = round(speed);
   }
   
-  printAck("max speed in angle-units per second: ");
-  printlnAck(1000.0 / gMaxInterpolationSpeed);  // convert to angle-units per second
-}*/
+  broadcastSpeed();
+  printAck("servo speed: ");
+  printlnAck(gServoSpeed);
+  
+  //printAck("max speed in angle-units per second: ");
+  //printlnAck(1000.0 / gMaxInterpolationSpeed);  // convert to angle-units per second
+}
 
 void readServoPositions() {
   printAck("Servo Readings:");
@@ -305,14 +313,14 @@ void readServoPositions() {
     if(pos < 0 || pos > 1024) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
     
     // print key:value pairs space delimited, but column-aligned
-    /*char buf[16];
+    char buf[16];
     int ixEnd = sprintf(buf, "ID:%d", id);
     while(ixEnd < 5) buf[ixEnd++] = ' ';
     buf[ixEnd] = '\0';
 
     printAck(buf);
     printAck(" pos:");
-    printlnAck(pos);*/
+    printlnAck(pos);
   }
 
   // python dictionary notation;
@@ -328,14 +336,14 @@ void readServoPositions() {
     ix += sprintf(dictBuf+ix, "%d:%d,", id, pos);
   }
   
-  dictBuf[ix - 1] = '}';    //overwrite the final comma
+  //dictBuf[ix - 1] = '}';    //overwrite the final comma
   printlnAlways(dictBuf);
 }
 
 
 // arguments are index:angle pairs
 void cmdMoveServos() {
-  broadcastSpeed();    // servos can forget their speed, or may have reset since we booted
+  //broadcastSpeed();    // servos can forget their speed, or may have reset since we booted
   
   PositionTuple tuple;
   int count = 0;
@@ -527,6 +535,37 @@ void cmdLoadPose() {
     if(index < 0 || index >= NumPositions) return;
     loadPose(Positions[index]);
   }
+}
+
+int sinToServoPos(float sinx) {
+  return round(512 + (sinx * 300));
+}
+
+void cmdCircle() {
+  int id1 = parseID(CmdMgr.next());
+  int id2 = id1 + 1;
+  
+  long seconds = parseID(CmdMgr.next());
+  float msDuration = 1000 * seconds;
+  
+  long start = millis();
+  long end = start + msDuration;
+  long now;
+  
+  do {
+    now = millis();
+    float angle = (now - start) / msDuration * 2*3.14159;
+    float sinx = sin(angle);
+    float cosx = cos(angle);
+
+    Servos.setCurPose(id1, sinToServoPos(sin(angle)));
+    Servos.setCurPose(id2, sinToServoPos(cos(angle)));
+    Servos.writePose();
+    
+    while(millis() < 30 + now);
+    //printAlways(sinx); printAlways(", "); printlnAlways(cosx);
+
+  } while(now < end);
 }
 
 // expects up to 6 space-delimited ints 0-255

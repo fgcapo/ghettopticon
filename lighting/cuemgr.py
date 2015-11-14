@@ -54,6 +54,7 @@ class LightArmView:
   def xIndexToID(self, index): return index * 2
   def yIndexToID(self, index): return index * 2 + 1
 
+  def numServos(self): return 4
 
   # retrieve angle based on arm index on screen
   # type must be 'x' or 'y'
@@ -144,7 +145,7 @@ class LightArmView:
       if seq == '[C': # left arrow
         if self.inSingleMode(): self.ixCursor += 1
         else: self.ixCursor = self.ixCursor - self.ixCursor % self.PageWidth + self.PageWidth
-        self.ixCursor = min(len(self.armIDs)-1, self.ixCursor)
+        self.ixCursor = min(self.numServos()-1, self.ixCursor)
       elif seq == '[D': # right arrow
         if self.inSingleMode(): self.ixCursor -= 1
         else: self.ixCursor = self.ixCursor - self.ixCursor % self.PageWidth - self.PageWidth

@@ -57,7 +57,7 @@ class DmxChannels:
             self.client = self.wrapper.Client()
         except:
             print("Error: couldn't connect to OLA server")
-            getch()
+            #getch()
             
     def exit(self):
       pass
