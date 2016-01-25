@@ -40,7 +40,7 @@
 // array of name-command pairs must end with {NULL, NULL}
 
 // Size of the input buffer in bytes (maximum length of one command plus arguments)
-#define COMMAND_BUFFER_LENGTH 255
+#define COMMAND_BUFFER_LENGTH 20
 //template<int COMMAND_BUFFER_LENGTH=255>
 class SerialCommand {
   public:
@@ -63,6 +63,8 @@ class SerialCommand {
     void readSerial();    // Main entry point.
     void clearBuffer();   // Clears the input buffer.
     char *next();         // Returns pointer to next token found in command buffer (for getting arguments to commands).
+
+	void handleChar(char inChar);	// Call this to pass input one char at a time
 
     // Call this begin receiving binary data.  Callback will be called when done.
     void enterBinaryMode(int numBytes, void (*callback)(char *buf, int len));

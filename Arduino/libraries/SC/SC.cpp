@@ -77,7 +77,11 @@ void SerialCommand::readSerial() {
     #ifdef SERIALCOMMAND_DEBUG
       Serial.print(inChar);   // Echo back to serial stream
     #endif
+	handleChar(inChar);
+  }
+}
 
+void SerialCommand::handleChar(char inChar) {
     // binary mode
     if (numBinaryBytes) {
       if (bufPos >= COMMAND_BUFFER_LENGTH) return;
@@ -139,7 +143,6 @@ void SerialCommand::readSerial() {
         #endif
       }
     }
-  }
 }
 
 void SerialCommand::enterBinaryMode(int numBytes, void (*function)(char*, int)) {
