@@ -308,7 +308,7 @@ void readServoPositions() {
     int id = Servos.getId(i);
     //int pos = Servos.getCurPose(id);
     int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
-    //Serial.println(pos);
+    //printlnAlways(pos);
     
     if(pos < 0 || pos > 1024) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
     
@@ -369,9 +369,9 @@ void cmdMoveServos() {
   }
   
   Servos.writePose();
-  Serial.print("Moving ");
-  Serial.print(count);
-  Serial.println(" servos.");
+  printAck("Moving ");
+  printAck(count);
+  printlnAck(" servos.");
 }
 
 //servo serial command format:
@@ -522,8 +522,9 @@ void loadPose(int pos = 512) {
 
   broadcastSpeed();
   Servos.writePose();
-  Serial.print("Moving servos to position: ");
-  Serial.println(pos);
+printAck("Moving servos to position: ");
+  printAck("Moving servos to position: ");
+  printlnAck(pos);
 }
 
 void cmdLoadPose() {
@@ -630,8 +631,93 @@ void cmdSetPrintLevel() {
   printlnAck(PrintLevel::toString());
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ethernet controller portion
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Pinout - Arduino Mega:
+// VCC (Green) -   3.3V
+// GND (Gr Wh) -    GND 
+// SCK (Bl Wh) - Pin 52
+// SO  (Blue)  - Pin 50
+// SI  (Br Wh) - Pin 51
+// CS  (Brown) - Pin 53  # Selectable with the ether.begin() function
+//
+// Pinout - Arduino Uno:
+// VCC (Green) -   3.3V
+// GND (Gr Wh) -    GND
+// SCK (Bl Wh) - Pin 13
+// SO  (Blue)  - Pin 12
+// SI  (Br Wh) - Pin 11
+// CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
+
+#include <EtherCard.h>
+#include <IPAddress.h>
+
+#define STATIC 1  // set to 1 to disable DHCP (adjust myip/gwip values below)
+
+#if STATIC
+// ethernet interface ip address and gateway ip address
+static byte myip[] = {10,0,0,70}, gwip[] = { 10,0,0,1 };
+//static byte myip[] = { 192,168,1,70 }, gwip[] = { 192,168,1,1 };
+#endif
+
+const int myport = 1337;
+
+// ethernet mac address - must be unique on your network
+static byte mymac[] = { 0x70,0x69,0x69,0x2D,0x30,0x31 };
+
+byte Ethernet::buffer[200]; // tcp/ip send and receive buffer
+
+//callback that prints received packets to the serial port
+void udpSerialPrint(word dst_port, byte ip[4], word src_port, const char *data, word len) {
+
+  IPAddress src(ip[0], ip[1], ip[2], ip[3]);
+  Serial.println(src);
+  Serial.println(src_port);
+  Serial.println(data);
+  Serial.println(len);
+
+  ether.sendUdp(data, len, dst_port, ip, src_port);
+  //if (dst_port == myport) {
+    for(int i = 0; i < len; i++) CmdMgr.handleChar(data[i]);
+  //}
+}
+
+void setupNetwork() {
+  if (ether.begin(sizeof Ethernet::buffer, mymac, 53) == 0)
+    Serial.println(F("Failed to access Ethernet controller"));
+  else
+    Serial.println(F("Ethernet controller setup"));
+#if STATIC
+  ether.staticSetup(myip, gwip);
+  memcpy(ether.dnsip, gwip, sizeof gwip);  // UDP requires a DNS address...
+#else
+  if (!ether.dhcpSetup())
+    Serial.println(F("DHCP failed"));
+#endif
+
+  ether.printIp("IP:  ", ether.myip);
+  ether.printIp("GW:  ", ether.gwip);
+  ether.printIp("DNS: ", ether.dnsip);
+
+  // register udpSerialPrint() to port 1337
+  ether.udpServerListenOnPort(&udpSerialPrint, myport);
+}
+
+void loopNetwork(){
+  // this must be called for ethercard functions to work.
+  ether.packetLoop(ether.packetReceive());
+}
+
+
 void setup() {
+  Serial.begin(38400);
+  
+  setupNetwork();
+  
   Servos.setup(NumServos);
+  readVoltage();
   
   // read in the position of each servo
   Servos.readPose();
@@ -644,16 +730,15 @@ void setup() {
     Servos.setNextPose(id, Servos.getCurPose(id));
   }*/
   
-  Serial.begin(38400);
-  readVoltage();
-  readServoPositions();
+  //readServoPositions();
   
-  loadPose();
+  //loadPose();
 }
 
 void loop() {
   if(Servos.interpolating) Servos.interpolateStep();
-  CmdMgr.readSerial();
+  //CmdMgr.readSerial();
+  loopNetwork();
 }
 
 
