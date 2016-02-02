@@ -1,12 +1,28 @@
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
-#include <UIPEthernet.h>
 #include <SC.h>
 
-// print to ethernet client if there is one
-EthernetClient Client;
-#define gPrinter Client
+#include <UIPEthernet.h>
+
+#define COMM_ETHERNET
+
+#ifdef COMM_ETHERNET
+
+  IPAddress IP(10,0,0,70);
+  const unsigned int PORT = 1337;
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0x04,0x05};
+  EthernetServer TCPserver(PORT);
+
+  // print to the current ethernet client if there is one
+  EthernetClient Client;
+  #define gPrinter Client
+  
+#else
+  #define gPrinter Serial
+#endif
+
 #include <PrintLevel.h>
+#include <SC.h>
 
 // this flag will invert PWM output (255-output), for active low devices
 #define INVERT_HIGH_AND_LOW
@@ -21,16 +37,19 @@ int parseAngle(const char *arg);
 boolean parsePositionTuple(char *s, PositionTuple *out);
 int parseListOfIDs(int *outIDs, int maxIDs);
 
+void cmdUnrecognized(const char *cmd);
+void cmdPWMPins();
 void readVoltage();
 void readServoPositions();
 void cmdSetPrintLevel();
-//void cmdSetMaxSpeed();
+void cmdSetMaxSpeed();
 void cmdLoadPose();
 void cmdMoveServos();
 void cmdInterpolateServos();
 void cmdInterpolateServosBinary();
 void cmdRelax();
 void cmdTorque();
+
 
 SerialCommand::Entry CommandsList[] = {
   {"v",      readVoltage},
@@ -44,13 +63,13 @@ SerialCommand::Entry CommandsList[] = {
   {"relax",  cmdRelax},
   {"torq",   cmdTorque},
   {"pwm",    cmdPWMPins},
-  {"circle", cmdCircle},
+//  {"circle", cmdCircle},
   {NULL,     NULL}
 };
 
 SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 
-const int PWMPins[] = {12, 13, 14, 15};
+const int PWMPins[] = {/*12,*/ 13, 14, 15};
 const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 
 const int NumServos = 32;
@@ -305,7 +324,7 @@ void cmdSetMaxSpeed() {
 
 void readServoPositions() {
   printAck("Servo Readings:");
-  printlnAck(NumServos);
+  //printlnAck(NumServos);
   
   //Servos.readPose();
 
@@ -313,7 +332,7 @@ void readServoPositions() {
     int id = Servos.getId(i);
     //int pos = Servos.getCurPose(id);
     int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
-    //printlnAlways(pos);
+    //Serial.println(pos);
     
     if(pos < 0 || pos > 1024) pos = 0;   // 8191-2 is invalid; replace with 0 because it's also invalid and shorter
     
@@ -330,7 +349,7 @@ void readServoPositions() {
 
   // python dictionary notation;
   // allocate 3 for {}\0, and 8 for each pos, though (4 + comma) should be max digits
-  char dictBuf[3 + NumServos * (3+1+4+1)] = "{}";
+  char dictBuf[3 + NumServos * (3+1+4+1)] = "{";
   int ix = 1;
 
   for(int i = 0; i < NumServos; i++) {
@@ -341,7 +360,7 @@ void readServoPositions() {
     ix += sprintf(dictBuf+ix, "%d:%d,", id, pos);
   }
   
-  if(ix > 1) dictBuf[ix - 1] = '}';    //overwrite the final comma
+  //dictBuf[ix - 1] = '}';    //overwrite the final comma
   printlnAlways(dictBuf);
 }
 
@@ -353,14 +372,9 @@ void cmdMoveServos() {
   PositionTuple tuple;
   int count = 0;
   
-  char *arg = CmdMgr.next();
-  if(arg == NULL) {
-    printlnError("Error: no arguments");
-    return;
-  }
-
   // see what kind of arguments we have
-  do {
+  while(char *arg = CmdMgr.next()) {
+
     if(count >= NumServos) {
       printlnError("Too many arguments");
       return;
@@ -376,12 +390,12 @@ void cmdMoveServos() {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Servos.setCurPose(tuple.id, tuple.angle);
-  } while(arg = CmdMgr.next());
+  }
   
   Servos.writePose();
-  printAck("Moving ");
-  printAck(count);
-  printlnAck(" servos");
+  Serial.print("Moving ");
+  Serial.print(count);
+  Serial.println(" servos.");
 }
 
 //servo serial command format:
@@ -532,9 +546,7 @@ void loadPose(int pos = 512) {
 
   broadcastSpeed();
   Servos.writePose();
-  printAck("Moving ");
-  printAck(NumServos);
-  printAck(" servos to position index: ");
+  printAck("Moving servos to position: ");
   printlnAck(pos);
 }
 
@@ -642,46 +654,19 @@ void cmdSetPrintLevel() {
   printlnAck(PrintLevel::toString());
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-// ethernet controller portion
-//////////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// Pinout - Arduino Mega:
-// VCC (Green) -   3.3V
-// GND (Gr Wh) -    GND 
-// SCK (Bl Wh) - Pin 52
-// SO  (Blue)  - Pin 50
-// SI  (Br Wh) - Pin 51
-// CS  (Brown) - Pin 53  # Selectable with the ether.begin() function
-//
-// Pinout - Arduino Uno:
-// VCC (Green) -   3.3V
-// GND (Gr Wh) -    GND
-// SCK (Bl Wh) - Pin 13
-// SO  (Blue)  - Pin 12
-// SI  (Br Wh) - Pin 11
-// CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
 
-static uint8_t MAC[6] = {0xEE,0x01,0x02,0x03,0x04,0x05};
-IPAddress IP(10,0,0,71);
-const int PORT = 1337;
-EthernetServer TCPserver(PORT);
-
-void setupNetwork() {
-  Ethernet.begin(MAC, IP);
-  TCPserver.begin();
-
-  Serial.print("server is at ");
-  Serial.println(Ethernet.localIP());
-}
 
 void setup() {
   Serial.begin(38400);
   
-  setupNetwork();
-  
+#ifdef COMM_ETHERNET
+  Serial.print("Starting ethernet server on address: ");
+  Ethernet.begin(MAC, IP);
+  TCPserver.begin();
+  Serial.println(Ethernet.localIP());
+#endif
+
   Servos.setup(NumServos);
-  readVoltage();
   
   // read in the position of each servo
   Servos.readPose();
@@ -694,15 +679,20 @@ void setup() {
     Servos.setNextPose(id, Servos.getCurPose(id));
   }*/
   
-  //readServoPositions();
+  readVoltage();
+  readServoPositions();
   
   //loadPose();
 }
 
 void loop() {
   if(Servos.interpolating) Servos.interpolateStep();
-  //CmdMgr.readSerial();  // turn off reading from serial; otherwise, we'll need multiple read buffers...
 
+// turn off reading from serial; otherwise, we'll need multiple read buffers...
+#ifndef COMM_ETHERNET
+  CmdMgr.readSerial();  
+
+#else
   // TODO: edit EthernetServer to separate accepting a connection
   // from reading from one, so we can great connectors
   // TODO: multiple connections? Yikes.
@@ -724,6 +714,6 @@ void loop() {
     //if(gotData) Client.println("DATA from Server!");
     //client.stop();
   }
+#endif
 }
-
 
