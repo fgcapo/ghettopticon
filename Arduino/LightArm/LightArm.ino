@@ -1,7 +1,12 @@
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
-#include <PrintLevel.h>
+#include <UIPEthernet.h>
 #include <SC.h>
+
+// print to ethernet client if there is one
+EthernetClient Client;
+#define gPrinter Client
+#include <PrintLevel.h>
 
 // this flag will invert PWM output (255-output), for active low devices
 #define INVERT_HIGH_AND_LOW
@@ -300,7 +305,7 @@ void cmdSetMaxSpeed() {
 
 void readServoPositions() {
   printAck("Servo Readings:");
-  //printlnAck(NumServos);
+  printlnAck(NumServos);
   
   //Servos.readPose();
 
@@ -325,7 +330,7 @@ void readServoPositions() {
 
   // python dictionary notation;
   // allocate 3 for {}\0, and 8 for each pos, though (4 + comma) should be max digits
-  char dictBuf[3 + NumServos * (3+1+4+1)] = "{";
+  char dictBuf[3 + NumServos * (3+1+4+1)] = "{}";
   int ix = 1;
 
   for(int i = 0; i < NumServos; i++) {
@@ -336,7 +341,7 @@ void readServoPositions() {
     ix += sprintf(dictBuf+ix, "%d:%d,", id, pos);
   }
   
-  //dictBuf[ix - 1] = '}';    //overwrite the final comma
+  if(ix > 1) dictBuf[ix - 1] = '}';    //overwrite the final comma
   printlnAlways(dictBuf);
 }
 
@@ -348,9 +353,14 @@ void cmdMoveServos() {
   PositionTuple tuple;
   int count = 0;
   
-  // see what kind of arguments we have
-  while(char *arg = CmdMgr.next()) {
+  char *arg = CmdMgr.next();
+  if(arg == NULL) {
+    printlnError("Error: no arguments");
+    return;
+  }
 
+  // see what kind of arguments we have
+  do {
     if(count >= NumServos) {
       printlnError("Too many arguments");
       return;
@@ -366,12 +376,12 @@ void cmdMoveServos() {
   /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Servos.setCurPose(tuple.id, tuple.angle);
-  }
+  } while(arg = CmdMgr.next());
   
   Servos.writePose();
   printAck("Moving ");
   printAck(count);
-  printlnAck(" servos.");
+  printlnAck(" servos");
 }
 
 //servo serial command format:
@@ -522,8 +532,9 @@ void loadPose(int pos = 512) {
 
   broadcastSpeed();
   Servos.writePose();
-printAck("Moving servos to position: ");
-  printAck("Moving servos to position: ");
+  printAck("Moving ");
+  printAck(NumServos);
+  printAck(" servos to position index: ");
   printlnAck(pos);
 }
 
@@ -651,65 +662,18 @@ void cmdSetPrintLevel() {
 // SI  (Br Wh) - Pin 11
 // CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
 
-#include <EtherCard.h>
-#include <IPAddress.h>
-
-#define STATIC 1  // set to 1 to disable DHCP (adjust myip/gwip values below)
-
-#if STATIC
-// ethernet interface ip address and gateway ip address
-static byte myip[] = {10,0,0,70}, gwip[] = { 10,0,0,1 };
-//static byte myip[] = { 192,168,1,70 }, gwip[] = { 192,168,1,1 };
-#endif
-
-const int myport = 1337;
-
-// ethernet mac address - must be unique on your network
-static byte mymac[] = { 0x70,0x69,0x69,0x2D,0x30,0x31 };
-
-byte Ethernet::buffer[200]; // tcp/ip send and receive buffer
-
-//callback that prints received packets to the serial port
-void udpSerialPrint(word dst_port, byte ip[4], word src_port, const char *data, word len) {
-
-  IPAddress src(ip[0], ip[1], ip[2], ip[3]);
-  Serial.println(src);
-  Serial.println(src_port);
-  Serial.println(data);
-  Serial.println(len);
-
-  ether.sendUdp(data, len, dst_port, ip, src_port);
-  //if (dst_port == myport) {
-    for(int i = 0; i < len; i++) CmdMgr.handleChar(data[i]);
-  //}
-}
+static uint8_t MAC[6] = {0xEE,0x01,0x02,0x03,0x04,0x05};
+IPAddress IP(10,0,0,71);
+const int PORT = 1337;
+EthernetServer TCPserver(PORT);
 
 void setupNetwork() {
-  if (ether.begin(sizeof Ethernet::buffer, mymac, 53) == 0)
-    Serial.println(F("Failed to access Ethernet controller"));
-  else
-    Serial.println(F("Ethernet controller setup"));
-#if STATIC
-  ether.staticSetup(myip, gwip);
-  memcpy(ether.dnsip, gwip, sizeof gwip);  // UDP requires a DNS address...
-#else
-  if (!ether.dhcpSetup())
-    Serial.println(F("DHCP failed"));
-#endif
+  Ethernet.begin(MAC, IP);
+  TCPserver.begin();
 
-  ether.printIp("IP:  ", ether.myip);
-  ether.printIp("GW:  ", ether.gwip);
-  ether.printIp("DNS: ", ether.dnsip);
-
-  // register udpSerialPrint() to port 1337
-  ether.udpServerListenOnPort(&udpSerialPrint, myport);
+  Serial.print("server is at ");
+  Serial.println(Ethernet.localIP());
 }
-
-void loopNetwork(){
-  // this must be called for ethercard functions to work.
-  ether.packetLoop(ether.packetReceive());
-}
-
 
 void setup() {
   Serial.begin(38400);
@@ -737,8 +701,29 @@ void setup() {
 
 void loop() {
   if(Servos.interpolating) Servos.interpolateStep();
-  //CmdMgr.readSerial();
-  loopNetwork();
+  //CmdMgr.readSerial();  // turn off reading from serial; otherwise, we'll need multiple read buffers...
+
+  // TODO: edit EthernetServer to separate accepting a connection
+  // from reading from one, so we can great connectors
+  // TODO: multiple connections? Yikes.
+
+  if(EthernetClient client = TCPserver.available()) {
+    //client.println("Allo");
+    Client = client;
+  }
+
+  if(Client)
+  {
+    bool gotData = false;
+    while(Client.available() > 0)
+    {
+      char c = Client.read();
+      CmdMgr.handleChar(c);
+      gotData = true;
+    }
+    //if(gotData) Client.println("DATA from Server!");
+    //client.stop();
+  }
 }
 
 

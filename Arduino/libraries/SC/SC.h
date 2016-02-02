@@ -40,7 +40,7 @@
 // array of name-command pairs must end with {NULL, NULL}
 
 // Size of the input buffer in bytes (maximum length of one command plus arguments)
-#define COMMAND_BUFFER_LENGTH 20
+#define COMMAND_BUFFER_LENGTH 99
 //template<int COMMAND_BUFFER_LENGTH=255>
 class SerialCommand {
   public:

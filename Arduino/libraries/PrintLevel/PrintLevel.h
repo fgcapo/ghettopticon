@@ -1,3 +1,6 @@
+// Put the writing target here, as long as it has print() and println() methods
+//#define gPrinter Serial
+
 namespace PrintLevel {
 	enum PrintLevel {SILENT=0, ERRORS_ONLY, NORMAL_ACKS, ALL_INFO, NUM_SETTINGS};
     char *gStrings[] = {"silent", "error", "ack", "info"};
@@ -35,52 +38,54 @@ namespace PrintLevel {
 	}
 
 	void printErrorString() {
-		Serial.print("Error: argument must one of the following: ");
+		gPrinter.print("Error: argument must one of the following: ");
 		for(int i = 0; i < NUM_SETTINGS; i++) {
-			Serial.print('\'');
-			Serial.print(gStrings[i]);
-			Serial.print('\'');
-			if(i == NUM_SETTINGS-1) Serial.print('\n');
-			else Serial.print(", ");
+			gPrinter.print('\'');
+			gPrinter.print(gStrings[i]);
+			gPrinter.print('\'');
+			if(i == NUM_SETTINGS-1) gPrinter.print('\n');
+			else gPrinter.print(", ");
 		}
 	}
 }
 
 template<class T>
 void printlnAlways(T s) {
-  Serial.println(s);
+  gPrinter.println(s);
 }
 template<class T>
 void printlnError(T s) {
   if(PrintLevel::gPrintLevel < PrintLevel::ERRORS_ONLY) return;
-  Serial.println(s);
+  gPrinter.println(s);
 }
 template<class T>
 void printlnAck(T s) {
   if(PrintLevel::gPrintLevel < PrintLevel::NORMAL_ACKS) return;
-  Serial.println(s);
+  gPrinter.println(s);
 }
 template<class T>
 void printlnInfo(T s) {
   if(PrintLevel::gPrintLevel < PrintLevel::ALL_INFO) return;
-  Serial.println(s);
+  gPrinter.println(s);
 }
 template<class T>
 void printAlways(T s) {
-  Serial.print(s);
+  gPrinter.print(s);
 }
 template<class T>
 void printError(T s) {
   if(PrintLevel::gPrintLevel < PrintLevel::ERRORS_ONLY) return;
-  Serial.print(s);
+  gPrinter.print(s);
 }
 template<class T>
 void printAck(T s) {
   if(PrintLevel::gPrintLevel < PrintLevel::NORMAL_ACKS) return;
-  Serial.print(s);
+  gPrinter.print(s);
 }
 template<class T>
 void printInfo(T s) {
   if(PrintLevel::gPrintLevel < PrintLevel::ALL_INFO) return;
-  Serial.print(s);
+  gPrinter.print(s);
 }
+
+#undef gPrinter
