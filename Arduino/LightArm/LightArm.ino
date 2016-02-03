@@ -324,7 +324,7 @@ void cmdSetMaxSpeed() {
 
 void readServoPositions() {
   printAck("Servo Readings:");
-  //printlnAck(NumServos);
+  printlnAck(NumServos);
   
   //Servos.readPose();
 
@@ -349,7 +349,7 @@ void readServoPositions() {
 
   // python dictionary notation;
   // allocate 3 for {}\0, and 8 for each pos, though (4 + comma) should be max digits
-  char dictBuf[3 + NumServos * (3+1+4+1)] = "{";
+  char dictBuf[3 + NumServos * (3+1+4+1)] = "{}";
   int ix = 1;
 
   for(int i = 0; i < NumServos; i++) {
@@ -360,7 +360,7 @@ void readServoPositions() {
     ix += sprintf(dictBuf+ix, "%d:%d,", id, pos);
   }
   
-  //dictBuf[ix - 1] = '}';    //overwrite the final comma
+  if(ix > 1) dictBuf[ix - 1] = '}';    //overwrite the final comma
   printlnAlways(dictBuf);
 }
 
@@ -372,9 +372,14 @@ void cmdMoveServos() {
   PositionTuple tuple;
   int count = 0;
   
-  // see what kind of arguments we have
-  while(char *arg = CmdMgr.next()) {
+  char *arg = CmdMgr.next();
+   if(arg == NULL) {
+     printlnError("Error: no arguments");
+     return;
+   }
 
+   // see what kind of arguments we have
+   do {
     if(count >= NumServos) {
       printlnError("Too many arguments");
       return;
@@ -383,19 +388,13 @@ void cmdMoveServos() {
     if(parsePositionTuple(arg, &tuple) == false) return;
     count++;
     
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // hack in microcontroller for now:
-  // invert movement of servo 28
-  if(tuple.id == 28) tuple.angle = 1024 - tuple.angle;
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     Servos.setCurPose(tuple.id, tuple.angle);
-  }
+  } while(arg = CmdMgr.next());
   
   Servos.writePose();
   Serial.print("Moving ");
   Serial.print(count);
-  Serial.println(" servos.");
+  Serial.println(" servos");
 }
 
 //servo serial command format:
@@ -546,7 +545,9 @@ void loadPose(int pos = 512) {
 
   broadcastSpeed();
   Servos.writePose();
-  printAck("Moving servos to position: ");
+  printAck("Moving ");
+  printAck(NumServos);
+  printAck(" servos to position index: ");
   printlnAck(pos);
 }
 
