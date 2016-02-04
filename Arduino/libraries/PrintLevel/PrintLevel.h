@@ -1,5 +1,7 @@
 // Put the writing target here, as long as it has print() and println() methods
-//#define gPrinter Serial
+#ifndef gPrinter
+  #define gPrinter Serial
+#endif
 
 namespace PrintLevel {
 	enum PrintLevel {SILENT=0, ERRORS_ONLY, NORMAL_ACKS, ALL_INFO, NUM_SETTINGS};

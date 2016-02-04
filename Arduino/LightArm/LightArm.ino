@@ -1,14 +1,24 @@
+// Arduino and Arbotix sketch for controlling multiple Dynamixel Servos.
+// 
+//////////////////////////////////////////////////////////////////////////////////////
+
+
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
 #include <SC.h>
 
-#include <UIPEthernet.h>
-
+// comment this out to read and write from Serial instead of Ethernet
 #define COMM_ETHERNET
 
-#ifdef COMM_ETHERNET
+// this flag will invert PWM output (255-output), for active low devices
+#define INVERT_HIGH_AND_LOW
 
-  IPAddress IP(10,0,0,70);
+
+#ifdef COMM_ETHERNET
+  // Ethernet using https://github.com/ntruchsess/arduino_uip
+  #include <UIPEthernet.h>
+
+  IPAddress IP(10,0,0,72);
   const unsigned int PORT = 1337;
   static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0x04,0x05};
   EthernetServer TCPserver(PORT);
@@ -16,58 +26,12 @@
   // print to the current ethernet client if there is one
   EthernetClient Client;
   #define gPrinter Client
-  
-#else
-  #define gPrinter Serial
 #endif
 
 #include <PrintLevel.h>
-#include <SC.h>
-
-// this flag will invert PWM output (255-output), for active low devices
-#define INVERT_HIGH_AND_LOW
 
 /////////////////////////////////////////////////////////////////////////////////
 // globals
-
-struct PositionTuple { int id, angle; };
-
-int parseID(const char *arg);
-int parseAngle(const char *arg);
-boolean parsePositionTuple(char *s, PositionTuple *out);
-int parseListOfIDs(int *outIDs, int maxIDs);
-
-void cmdUnrecognized(const char *cmd);
-void cmdPWMPins();
-void readVoltage();
-void readServoPositions();
-void cmdSetPrintLevel();
-void cmdSetMaxSpeed();
-void cmdLoadPose();
-void cmdMoveServos();
-void cmdInterpolateServos();
-void cmdInterpolateServosBinary();
-void cmdRelax();
-void cmdTorque();
-
-
-SerialCommand::Entry CommandsList[] = {
-  {"v",      readVoltage},
-  {"r",      readServoPositions},
-  {"plevel", cmdSetPrintLevel},
-  {"speed",  cmdSetMaxSpeed},
-  {"p",      cmdLoadPose},
-  {"s",      cmdMoveServos},
-//  {"i",      cmdInterpolateServos},
-//  {"B",      cmdInterpolateServosBinary},
-  {"relax",  cmdRelax},
-  {"torq",   cmdTorque},
-  {"pwm",    cmdPWMPins},
-//  {"circle", cmdCircle},
-  {NULL,     NULL}
-};
-
-SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 
 const int PWMPins[] = {/*12,*/ 13, 14, 15};
 const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
@@ -92,14 +56,57 @@ int gMaxInterpolationSpeed = 100;
 
 const char *MsgTupleFormatError = "Error: takes pairs in the form <ID>:<angle>";
 
+/////////////////////////////////////////////////////////////////////////////////////////
+// Command Manager and forward declarations for commands accessible from text interface
+
+struct PositionTuple { int id, angle; };
+
+int parseID(const char *arg);
+int parseAngle(const char *arg);
+boolean parsePositionTuple(char *s, PositionTuple *out);
+int parseListOfIDs(int *outIDs, int maxIDs);
+
+void cmdUnrecognized(const char *cmd);
+void cmdPWMPins();
+void readVoltage();
+void readServoPositions();
+void cmdSetPrintLevel();
+void cmdSetMaxSpeed();
+void cmdLoadPose();
+void cmdMoveServos();
+void cmdInterpolateServos();
+void cmdInterpolateServosBinary();
+void cmdRelax();
+void cmdTorque();
+void cmdCircle();
+
+SerialCommand::Entry CommandsList[] = {
+  {"plevel", cmdSetPrintLevel},
+  {"pwm",    cmdPWMPins},
+  {"v",      readVoltage},
+  {"r",      readServoPositions},
+  {"s",      cmdMoveServos},
+  {"p",      cmdLoadPose},
+//  {"i",      cmdInterpolateServos},
+//  {"B",      cmdInterpolateServosBinary},
+  {"speed",  cmdSetMaxSpeed},
+  {"relax",  cmdRelax},
+  {"torq",   cmdTorque},
+  {"circle", cmdCircle},
+  {NULL,     NULL}
+};
+
+SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// helpers
+
 void broadcastSpeed() {
   ax12SetRegister2(BroadcastID, AX_GOAL_SPEED_L, gServoSpeed);
 }
 
 /*
-/////////////////////////////////////////////////////////////////////////////////////////////
-// helpers
-
 // Converts string to double; returns true if successful.
 // Returns false if str contains any inappropriate characters, including whitespace.
 // See strtod for accepted number formats.
@@ -218,7 +225,8 @@ int parseListOfIDs(int *outIDs, int maxIDs) {
 
 
 //////////////////////////////////////////////////////////////////////////////////
-// commands
+// commands accessible from text interface
+
 void cmdUnrecognized(const char *cmd) {
   printlnError("unrecognized command");
 }
@@ -655,22 +663,22 @@ void cmdSetPrintLevel() {
   printlnAck(PrintLevel::toString());
 }
 
-
-
 void setup() {
   Serial.begin(38400);
-  
+
+  // query for and read in the position of each servo
+  // TODO: mod Servos class to query for IDs, and store lowest ID that responds
+  Servos.setup(NumServos);
+  Servos.readPose();
+
 #ifdef COMM_ETHERNET
+  // setup ethernet module
+  // TODO: assign static IP based on lowest present servo ID
   Serial.print("Starting ethernet server on address: ");
   Ethernet.begin(MAC, IP);
   TCPserver.begin();
   Serial.println(Ethernet.localIP());
 #endif
-
-  Servos.setup(NumServos);
-  
-  // read in the position of each servo
-  Servos.readPose();
   
   // Safe guard: the move interpolation code moves all servos, so if a servo starts
   // off-center, and we move another servo, the first servo will move to center (the default "next" position).
@@ -689,15 +697,16 @@ void setup() {
 void loop() {
   if(Servos.interpolating) Servos.interpolateStep();
 
-// turn off reading from serial; otherwise, we'll need multiple read buffers...
+// read from EITHER serial OR network; otherwise we'll need multiple read buffers...
 #ifndef COMM_ETHERNET
-  CmdMgr.readSerial();  
+  CmdMgr.readSerial();
 
 #else
   // TODO: edit EthernetServer to separate accepting a connection
   // from reading from one, so we can great connectors
-  // TODO: multiple connections? Yikes.
+  // Multiple connections? Yikes. Requires multiple buffers. Probably not.
 
+  // see if a client wants to say something; if so, save them as the client to respond to
   if(EthernetClient client = TCPserver.available()) {
     //client.println("Allo");
     Client = client;
@@ -705,15 +714,14 @@ void loop() {
 
   if(Client)
   {
-    bool gotData = false;
+    //bool gotData = false;
     while(Client.available() > 0)
     {
       char c = Client.read();
       CmdMgr.handleChar(c);
-      gotData = true;
+      //gotData = true;
     }
     //if(gotData) Client.println("DATA from Server!");
-    //client.stop();
   }
 #endif
 }
