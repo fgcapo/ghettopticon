@@ -1,5 +1,10 @@
 // Arduino and Arbotix sketch for controlling multiple Dynamixel Servos.
 // 
+// Send text commands via either ethernet or serial (see flag COMM_ETHERNET).
+// Set amount of response text with command plevel (see PrintLevel.h)
+// See SerialCommand::Entry CommandsList for list of commands.  Each command will reply with argument format
+//  when used incorrectly, unless plevel is set to "silent".
+
 //////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -10,12 +15,30 @@
 // comment this out to read and write from Serial instead of Ethernet
 #define COMM_ETHERNET
 
-// this flag will invert PWM output (255-output), for active low devices
+// this flag will invert PWM output (255-output), for active-low devices
 #define INVERT_HIGH_AND_LOW
 
 
+// Ethernet via ENC28J60 
+// Library: https://github.com/ntruchsess/arduino_uip
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Pinout - Arduino Mega:
+// VCC (Green) -   3.3V
+// GND (Gr Wh) -    GND 
+// SCK (Bl Wh) - Pin 52
+// SO  (Blue)  - Pin 50
+// SI  (Br Wh) - Pin 51
+// CS  (Brown) - Pin 53  # Selectable with the ether.begin() function
+//
+// Pinout - Arduino Uno:
+// VCC (Green) -   3.3V
+// GND (Gr Wh) -    GND
+// SCK (Bl Wh) - Pin 13
+// SO  (Blue)  - Pin 12
+// SI  (Br Wh) - Pin 11
+// CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
 #ifdef COMM_ETHERNET
-  // Ethernet using https://github.com/ntruchsess/arduino_uip
   #include <UIPEthernet.h>
 
   IPAddress IP(10,0,0,72);
@@ -662,6 +685,10 @@ void cmdSetPrintLevel() {
   printAck("print level ");
   printlnAck(PrintLevel::toString());
 }
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// setup & loop
 
 void setup() {
   Serial.begin(38400);
