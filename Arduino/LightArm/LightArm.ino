@@ -41,9 +41,11 @@
 #ifdef COMM_ETHERNET
   #include <UIPEthernet.h>
 
-  IPAddress IP(10,0,0,72);
+  const char ID_IP = 72;
+
+  IPAddress IP(10,0,0,ID_IP);
   const unsigned int PORT = 1337;
-  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0x04,0x05};
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0x04,ID_IP};
   EthernetServer TCPserver(PORT);
 
   // print to the current ethernet client if there is one

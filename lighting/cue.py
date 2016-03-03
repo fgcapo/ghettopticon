@@ -1,9 +1,9 @@
 import sys, os, threading, ast, time
 from console import *
-from lightarm import LightArms
+from lightarm import Arms
 from dmx import DmxChannels
 
-Arms = LightArms()
+#Arms = LightArms()
 DMX = DmxChannels()
 
 def openCueFile(filenameOnly, mode='r'):

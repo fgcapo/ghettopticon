@@ -1,4 +1,4 @@
-import sys, os, os.path, threading, ast, time
+import sys, os, os.path, threading, ast, time, signal
 from console import * 
 from cue import *
 from cueengine import CueEngine
@@ -10,9 +10,6 @@ CueMgr = CueEngine()
 
 def restAfterWord(word, line):
   return line[line.find(word) + len(word):].strip()
-
-def fitServoRange(v): return max(212, min(812, v))
-def fitLEDRange(v): return max(0, min(255, v))
 
 class Increment:
   def __init__(self, possibilities):
@@ -33,6 +30,10 @@ class View:
   def handleChar(self): pass
 
 
+def fitServoRange(v): return max(212, min(812, v))
+def fitLEDRange(v): return max(0, min(255, v))
+
+
 class LightArmView:
   def __init__(self):
     self.lineInputKey = 'c'
@@ -46,24 +47,15 @@ class LightArmView:
   # modify one arm or a group of 4 at a time
   Modes = ['individual', 'group']
 
+  # map names to servo vector indices
+  ServoDims = {'x':0, 'y':1}
+
   def toggleMode(self):
     self.mode = (self.mode + 1 ) % len(self.Modes)
   def inSingleMode(self):
     return self.mode == 0
 
-  def xIndexToID(self, index): return index * 2
-  def yIndexToID(self, index): return index * 2 + 1
-
-  def numServos(self): return 4
-
-  # retrieve angle based on arm index on screen
-  # type must be 'x' or 'y'
-  def getAngle(self, type, index=None):
-    if index is None: index = self.ixCursor
-    if type == 'x': id = self.xIndexToID(index)
-    elif type == 'y': id = self.yIndexToID(index)
-    else: raise BaseException('bad dimension')
-    return Arms.getAngle(id)
+  def numArms(self): return Arms.num()
 
   # returns a list of the selected arms' indices
   def selected(self):
@@ -73,12 +65,12 @@ class LightArmView:
       return range(self.group(), self.PageWidth)
 
   # returns a list of selected servo IDs, two for every arm index
-  def selectedIDs(self):
-    ids = []
-    for i in self.selected():
-      ids.append(self.xIndexToID(i))
-      ids.append(self.yIndexToID(i))
-    return ids
+#  def selectedIDs(self):
+#    ids = []
+#    for i in self.selected():
+#      ids.append(self.xIndexToID(i))
+#      ids.append(self.yIndexToID(i))
+#    return ids
      
   # return starting index of group that cursor is in
   def group(self, cursor=None):
@@ -90,23 +82,23 @@ class LightArmView:
     if cursor is None: cursor = self.ixCursor
     return index // self.PageWidth == cursor // self.PageWidth
  
-   # add increment to the angle of the X servo of the currently selected arm(s)
-  def modX(self, inc):
-    ids = self.selected()
-    for id in ids:
-      id = 2 * id
-      Arms.setAngle(id, fitServoRange(Arms.getAngle(id) + inc))
+  # retrieve angle based on arm index on screen
+  # type must be 'x' or 'y'
+  def getAngle(self, type, index=None):
+    if index is None: index = self.ixCursor
+    dim = self.ServoDims[type]
+    return Arms.getAngle(index, dim)
 
-  # add increment to the angle of the Y servo of the currently selected arm(s)
-  def modY(self, inc):
-    ids = self.selected()
-    for id in ids:
-      id = 2 * id + 1
-      Arms.setAngle(id, fitServoRange(Arms.getAngle(id) + inc))
+   # add increment to the angle of a servo of the currently selected arm(s)
+  def modAngle(self, type, inc):
+    dim = self.ServoDims[type]
+    for id in self.selected():
+      angle = fitServoRange(Arms.getAngle(id, dim)) 
+      Arms.setAngle(id, dim, angle + inc)
 
   def modI(self, inc):
-    channel = self.ixCursor // self.PageWidth
-    Arms.setLED(channel, fitLEDRange(Arms.getLED(channel) + inc))
+    for id in self.selected():
+      Arms.setLED(id, fitLEDRange(Arms.getLED(id) + inc))
 
   def handleLineInput(self, line):
     tokens = line.split()
@@ -118,17 +110,17 @@ class LightArmView:
     if ch == 'x':
       self.toggleMode() 
     if ch == 'r': 
-      Arms.relax(self.selectedIDs())
+      Arms.relax(self.selected())
     if ch == '0':
-      Arms.setAngle(self.selectedIDs(), 512)
+      pass #Arms.setAngles(self.selected(), [Arms.ServoCenter] * len(self.ServoDims))
     elif ch == 'w':
-      self.modY(self.inc())
+      self.modAngle('y', self.inc())
     elif ch == 's':
-      self.modY(-self.inc())
+      self.modAngle('y', -self.inc())
     elif ch == 'a':
-      self.modX(self.inc())
+      self.modAngle('x', self.inc())
     elif ch == 'd':
-      self.modX(-self.inc())
+      self.modAngle('x', -self.inc())
     elif ch == 'q':
       self.modI(self.inc())
     elif ch == 'e':
@@ -139,13 +131,12 @@ class LightArmView:
     elif ch == '>' or ch == '.':
       self.inc.next()
 
-
     elif ch == '\x1b':
       seq = getch() + getch()
       if seq == '[C': # left arrow
         if self.inSingleMode(): self.ixCursor += 1
         else: self.ixCursor = self.ixCursor - self.ixCursor % self.PageWidth + self.PageWidth
-        self.ixCursor = min(self.numServos()-1, self.ixCursor)
+        self.ixCursor = min(self.numArms()-1, self.ixCursor)
       elif seq == '[D': # right arrow
         if self.inSingleMode(): self.ixCursor -= 1
         else: self.ixCursor = self.ixCursor - self.ixCursor % self.PageWidth - self.PageWidth
@@ -158,7 +149,7 @@ class LightArmView:
 
   def display(self):
     clearScreen()
-    numArms = 4   # TODO get this from Arms
+    numArms = self.numArms()   # TODO get this from Arms
 
     def printHSep(firstColBlank=True):
       if firstColBlank: print('   |', end='')
@@ -176,26 +167,31 @@ class LightArmView:
           else: print('---|', end='')
       print('')
 
+    def printAngle(dim, index):
+      angle = self.getAngle(dim, index) 
+      if angle < 1: print('XXX|', end='')
+      else: print('{0:^3}|'.format(angle), end='')
+
     print('   Light Arm View')
     printHSep(False)
 
     print('x: |', end='')
     for i in range(numArms):
-      print('{0:^3}|'.format(self.getAngle('x', i)), end='')
+      printAngle('x', i)
     print('')
 
     printHSep() 
      
     print('y: |', end='')
     for i in range(numArms):
-      print('{0:^3}|'.format(self.getAngle('y', i)), end='')
+      printAngle('y', i)
     print('')
 
     printHSep()
 
     print('i: |', end='')
     for i in range(numArms):
-      print('{0:^3}|'.format(Arms.getLED(i//self.PageWidth)), end='')
+      print('{0:^3}|'.format(Arms.getLED(i)), end='')
     print('')
 
     printHSep(False)
@@ -377,18 +373,21 @@ cueView = CueView()
 
 currentView = lightArmView
 
-def programExit():
-  DMX.exit()
-  Arms.exit()
-  exit()
-
 def cmdLoadCueSheet(line):
   tokens = line.split()
   filename = restAfterWord(tokens[0], line)
   CueMgr.loadCueSheet(filename)
-  
+ 
+def signal_handler(signal, frame):
+  print('\nexiting...')
+  DMX.exit()
+  Arms.exit()
+  exit()
+
+def programExit(): signal_handler(None, None)
 
 if __name__ == '__main__':
+  signal.signal(signal.SIGINT, signal_handler)
   clearScreen()
   currentView.onFocus()
 
@@ -398,7 +397,7 @@ if __name__ == '__main__':
     currentView.display()
     ch = getch()
 
-    if ch == 'z' or ch == 'Z':
+    if ch == '\x03' or ch == 'z' or ch == 'Z':
       programExit()
 
     elif ch == '1': 
