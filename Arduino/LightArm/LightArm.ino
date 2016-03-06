@@ -375,9 +375,9 @@ void readServoPositions() {
     while(ixEnd < 5) buf[ixEnd++] = ' ';
     buf[ixEnd] = '\0';
 
-    printAck(buf);
-    printAck(" pos:");
-    printlnAck(pos);
+    printInfo(buf);
+    printInfo(" pos:");
+    printlnInfo(pos);
   }
 
   // python dictionary notation;
@@ -684,8 +684,8 @@ void cmdSetPrintLevel() {
     }
   }
   
-  printAck("print level ");
-  printlnAck(PrintLevel::toString());
+  printAlways("print level ");
+  printlnAlways(PrintLevel::toString());
 }
 
 
