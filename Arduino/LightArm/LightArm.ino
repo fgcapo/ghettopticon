@@ -7,7 +7,6 @@
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
 #include <SC.h>
@@ -41,7 +40,7 @@
 #ifdef COMM_ETHERNET
   #include <UIPEthernet.h>
 
-  const char ID_IP = 72;
+  const char ID_IP = 74;
 
   IPAddress IP(10,0,0,ID_IP);
   const unsigned int PORT = 1337;
@@ -104,8 +103,9 @@ void cmdInterpolateServosBinary();
 void cmdRelax();
 void cmdTorque();
 void cmdCircle();
+void cmdSetID();
 
-SerialCommand::Entry CommandsList[] = {
+static const SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
   {"pwm",    cmdPWMPins},
   {"v",      readVoltage},
@@ -118,6 +118,7 @@ SerialCommand::Entry CommandsList[] = {
   {"relax",  cmdRelax},
   {"torq",   cmdTorque},
   {"circle", cmdCircle},
+  {"id",     cmdSetID},
   {NULL,     NULL}
 };
 
@@ -689,15 +690,58 @@ void cmdSetPrintLevel() {
 }
 
 
+void cmdSetID() {
+
+  const char *arg1 = CmdMgr.next();
+  const char *arg2 = CmdMgr.next();
+  
+  if(arg1 == NULL || arg2 == NULL) {
+    printlnError("Error: usage: <old ID> <new ID>");
+    return;
+  }
+
+  int id = parseID(arg1);
+  int newID = parseID(arg2);
+  
+  if(id == 0 || newID == 0) return;
+  
+  const int AX_START = 255;
+  const int AX_ID_LENGTH = 4;
+  
+  int checksum = (~(id + AX_ID_LENGTH + AX_WRITE_DATA + AX_ID + newID))&0xFF;
+  setTXall();
+  ax12write(AX_START);                // Send Instructions over Serial
+  ax12write(AX_START);
+  ax12write(id);
+  ax12write(AX_ID_LENGTH);
+  ax12write(AX_WRITE_DATA);
+  ax12write(AX_ID);
+  ax12write(newID);
+  ax12write(checksum);
+  setRX(0);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // setup & loop
 
 void setup() {
   Serial.begin(38400);
 
+  // look for first ID that responds
+  int i = 1;
+
+/*  for(; i < BroadcastID; i++) {
+    if(ax12GetRegister(i, AX_PRESENT_POSITION_L, 2) != -1) {
+      break;
+    }
+  }
+
+  if(i == BroadcastID) i = 1; // failed to find a servo, so default to 1
+*/
   // query for and read in the position of each servo
   // TODO: mod Servos class to query for IDs, and store lowest ID that responds
-  Servos.setup(NumServos);
+  Servos.setup(NumServos, i);
   Servos.readPose();
 
 #ifdef COMM_ETHERNET
