@@ -758,7 +758,7 @@ void setup() {
 */
   // query for and read in the position of each servo
   // TODO: mod Servos class to query for IDs, and store lowest ID that responds
-  Servos.setup(NumServos, i);
+  Servos.setup(NumServos/*, i*/);
   Servos.readPose();
 
 #ifdef COMM_ETHERNET
