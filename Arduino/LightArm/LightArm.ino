@@ -11,8 +11,16 @@
 #include <BioloidController2.h>    // use the bug-fixed version 
 #include <SC.h>
 
-// comment this out to read and write from Serial instead of Ethernet
+// Comment this out to read and write from Serial instead of Ethernet.
+// Arduino IDE is wigging out when selecting which ethernet library to use; see line 50.
 #define COMM_ETHERNET
+
+/*#define COMM_ETHERNET_ENC28J60
+//#define COMM_ETHERNET_SHIELD
+
+/*#if defined COMM_ETHERNET_SHIELD || defined COMM_ETHERNET_ENC28J60
+  #define COMM_ETHERNET
+#endif*/
 
 // this flag will invert PWM output (255-output), for active-low devices
 #define INVERT_HIGH_AND_LOW
@@ -38,13 +46,22 @@
 // SI  (Br Wh) - Pin 11
 // CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
 #ifdef COMM_ETHERNET
-  #include <UIPEthernet.h>
+  
+  // For ENC28J60 card
+  //#include <UIPEthernet.h>
+  
+  // For Arduino Ethernet Shield
+  #include <SPI.h>
+  #include <Ethernet.h>
 
-  const char ID_IP = 74;
+  const char ID_IP = 76;
 
   IPAddress IP(10,0,0,ID_IP);
+  IPAddress GATEWAY(10,0,0,1);
+  IPAddress SUBNET(255, 255, 255, 0);
   const unsigned int PORT = 1337;
-  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0x04,ID_IP};
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
+
   EthernetServer TCPserver(PORT);
 
   // print to the current ethernet client if there is one
@@ -748,7 +765,9 @@ void setup() {
   // setup ethernet module
   // TODO: assign static IP based on lowest present servo ID
   Serial.print("Starting ethernet server on address: ");
-  Ethernet.begin(MAC, IP);
+
+  Ethernet.begin(MAC, IP, GATEWAY, SUBNET);
+    
   TCPserver.begin();
   Serial.println(Ethernet.localIP());
 #endif
