@@ -7,7 +7,7 @@
 
 // Comment this out to read and write from Serial instead of Ethernet.
 // Arduino IDE is wigging out when selecting which ethernet library to use; see line 35.
-//#define COMM_ETHERNET
+#define COMM_ETHERNET
 
 // this flag will invert PWM output (255-output), for active-low devices
 #define INVERT_HIGH_AND_LOW
@@ -29,19 +29,19 @@
 // VCC (Green) -   3.3V
 // GND (Gr Wh) -    GND
 // SCK (Bl Wh) - Pin 13
-// SO  (Blue)  - Pin 12
+// SO  (Blue)  - Pin 12  
 // SI  (Br Wh) - Pin 11
 // CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
 #ifdef COMM_ETHERNET
   
   // For ENC28J60 card
-  #include <UIPEthernet.h>
+  //#include <UIPEthernet.h>
   
   // For Arduino Ethernet Shield
-  //#include <SPI.h>
-  //#include <Ethernet.h>
+  #include <SPI.h>
+  #include <Ethernet.h>
 
-  const char ID_IP = 71;
+  const char ID_IP = 60;
 
   IPAddress IP(10,0,0,ID_IP);
   IPAddress GATEWAY(10,0,0,1);
