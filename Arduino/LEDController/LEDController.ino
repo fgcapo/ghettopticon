@@ -1,12 +1,67 @@
 // Arduino sketch which outputs PWM for a set of channels based on serial input.
 // Serial commands accepted:
 // - pwm <int1> <int2> <int3> ..., where <intN> is 0-255 and N is up to NumChannels
+//////////////////////////////////////////////////////////////////////////////////////
 
 #include <SC.h>
+
+// Comment this out to read and write from Serial instead of Ethernet.
+// Arduino IDE is wigging out when selecting which ethernet library to use; see line 35.
+//#define COMM_ETHERNET
+
+// this flag will invert PWM output (255-output), for active-low devices
+#define INVERT_HIGH_AND_LOW
+
+
+// Ethernet via ENC28J60 
+// Library: https://github.com/ntruchsess/arduino_uip
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Pinout - Arduino Mega:
+// VCC (Green) -   3.3V
+// GND (Gr Wh) -    GND 
+// SCK (Bl Wh) - Pin 52
+// SO  (Blue)  - Pin 50
+// SI  (Br Wh) - Pin 51
+// CS  (Brown) - Pin 53  # Selectable with the ether.begin() function
+//
+// Pinout - Arduino Uno:
+// VCC (Green) -   3.3V
+// GND (Gr Wh) -    GND
+// SCK (Bl Wh) - Pin 13
+// SO  (Blue)  - Pin 12
+// SI  (Br Wh) - Pin 11
+// CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
+#ifdef COMM_ETHERNET
+  
+  // For ENC28J60 card
+  #include <UIPEthernet.h>
+  
+  // For Arduino Ethernet Shield
+  //#include <SPI.h>
+  //#include <Ethernet.h>
+
+  const char ID_IP = 71;
+
+  IPAddress IP(10,0,0,ID_IP);
+  IPAddress GATEWAY(10,0,0,1);
+  IPAddress SUBNET(255, 255, 255, 0);
+  const unsigned int PORT = 1337;
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
+
+  EthernetServer TCPserver(PORT);
+
+  // print to the current ethernet client if there is one
+  EthernetClient Client;
+  #define gPrinter Client
+#endif
+
+  //#define gPrinter Serial
 #include <PrintLevel.h>
 
-// this flag will invert output (255-output), for active low devices
-#define INVERT_HIGH_AND_LOW
+void cmdUnrecognized(const char *cmd);
+void cmdPWMPins();
+void cmdSetPrintLevel();
 
 SerialCommand::Entry CommandsList[] = {
   {"plevel", cmdSetPrintLevel},
@@ -101,6 +156,17 @@ void setup() {
   
   printAlways(".\n");
 
+#ifdef COMM_ETHERNET
+  // setup ethernet module
+  // TODO: assign static IP based on lowest present servo ID
+  Serial.print("Starting ethernet server on address: ");
+
+  Ethernet.begin(MAC, IP);//, GATEWAY, SUBNET);
+    
+  TCPserver.begin();
+  Serial.println(Ethernet.localIP());
+#endif
+
   // fiddle with PWM frequency
   //TCCR2B = _BV(CS00);
   /*TCCR0B = TCCR0B & 0b11111000 | 1;
@@ -109,5 +175,31 @@ void setup() {
 }
 
 void loop() {
+// read from EITHER serial OR network; otherwise we'll need multiple read buffers...
+#ifndef COMM_ETHERNET
   CmdMgr.readSerial();
+
+#else
+  // TODO: edit EthernetServer to separate accepting a connection
+  // from reading from one, so we can great connectors
+  // Multiple connections? Yikes. Requires multiple buffers. Probably not.
+
+  // see if a client wants to say something; if so, save them as the client to respond to
+  if(EthernetClient client = TCPserver.available()) {
+    //client.println("Allo");
+    Client = client;
+  }
+
+  if(Client)
+  {
+    //bool gotData = false;
+    while(Client.available() > 0)
+    {
+      char c = Client.read();
+      CmdMgr.handleChar(c);
+      //gotData = true;
+    }
+    //if(gotData) Client.println("DATA from Server!");
+  }
+#endif
 }
