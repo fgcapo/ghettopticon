@@ -50,11 +50,11 @@
 #ifdef COMM_ETHERNET
   
   // For ENC28J60 card
-  //#include <UIPEthernet.h>
+  #include <UIPEthernet.h>
   
   // For Arduino Ethernet Shield
-  #include <SPI.h>
-  #include <Ethernet.h>
+  //#include <SPI.h>
+  //#include <Ethernet.h>
 
   const char ID_IP = 77;
 
@@ -86,7 +86,7 @@ const int BroadcastID = 254;
 
 // When moving servos without interpolating, set this speed on the servos.
 // The units are servo specific, range [1-1023].
-int gServoSpeed = 100;
+int gServoSpeed = 40;
 
 // When an interpolating move is requested, the servos will move at different speeds in order to
 // arrive at the target position simultaneously. But movement time will be constrained so that
@@ -97,16 +97,18 @@ int gMaxInterpolationSpeed = 100;
 
 //bool relaxed = false;
 
-const char *MsgTupleFormatError = "Error: takes pairs in the form <ID>:<angle>";
+const char *MsgPositionTupleFormatError = "Error: takes pairs in the form <ID>:<angle>";
+const char *MsgPWMTupleFormatError = "Error: takes pairs in the form <index>:<PWM>";
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Command Manager and forward declarations for commands accessible from text interface
 
-struct PositionTuple { int id, angle; };
+struct IDTuple { int id; long value; };
 
 int parseID(const char *arg);
 int parseAngle(const char *arg);
-boolean parsePositionTuple(char *s, PositionTuple *out);
+boolean parsePositionTuple(char *s, IDTuple *out);
+boolean parsePWMTuple(char *s, IDTuple *out);
 int parseListOfIDs(int *outIDs, int maxIDs);
 
 void cmdUnrecognized(const char *cmd);
@@ -223,30 +225,20 @@ int parseAngle(const char *arg) {
   return angle;
 }
 
-// convert "<id>:<angle>" into 2 integers in a struct
-// returns false on error
-boolean parsePositionTuple(char *s, PositionTuple *out) {
-  char *sID = strtok(s, ":");
-  if(sID == NULL) {
-    printlnError(MsgTupleFormatError);
-    return false;
-  }
-  
-  int id = parseID(sID);
-  if(id == 0) return false;
 
-  char *sAngle = strtok(NULL, ":");
-  if(sAngle == NULL) {
-    printlnError(MsgTupleFormatError);
-    return false;
+// Takes a string of an integer (numeric chars only). Returns the integer on success.
+// Prints error and returns -1 if there is a parse error or the PWM value is out of range.
+long parsePWM(const char *arg) {
+  char *end;
+  long v = strtol(arg, &end, 10);
+
+  if(*end != '\0' || v < 0 || v > MAX_PWM) {
+      printlnError("Error: PWM value must be between 0 and ");
+      printlnError(MAX_PWM);
+      return -1;
   }
   
-  int angle = parseAngle(sAngle);
-  if(angle == 0) return false;
-  
-  out->id = id;
-  out->angle = angle;
-  return true;
+  return v;
 }
 
 // parse a list of IDs from CmdMgr into an array
@@ -266,6 +258,58 @@ int parseListOfIDs(int *outIDs, int maxIDs) {
   }
   
   return count;
+}
+
+// convert "<id>:<angle>" into 2 integers in a struct
+// returns false on error
+boolean parsePositionTuple(char *s, IDTuple *out) {
+  char *sID = strtok(s, ":");
+  if(sID == NULL) {
+    printlnError(MsgPositionTupleFormatError);
+    return false;
+  }
+  
+  int id = parseID(sID);
+  if(id == 0) return false;
+
+  char *sAngle = strtok(NULL, ":");
+  if(sAngle == NULL) {
+    printlnError(MsgPositionTupleFormatError);
+    return false;
+  }
+  
+  int angle = parseAngle(sAngle);
+  if(angle == 0) return false;
+  
+  out->id = id;
+  out->value = angle;
+  return true;
+}
+
+// convert "<index>:<value>" into 2 integers in a struct
+// returns false on error
+boolean parsePWMTuple(char *s, IDTuple *out) {
+  char *sIndex = strtok(s, ":");
+  if(sIndex == NULL) {
+    printlnError(MsgPWMTupleFormatError);
+    return false;
+  }
+  
+  int index = parseID(sIndex);
+  if(index == 0) return false;
+
+  char *sPWM = strtok(NULL, ":");
+  if(sPWM == NULL) {
+    printlnError(MsgPWMTupleFormatError);
+    return false;
+  }
+  
+  long pwm = parsePWM(sPWM);
+  if(pwm == -1) return false;
+  
+  out->id = index;
+  out->value = (int)pwm;
+  return true;
 }
 
 
@@ -422,7 +466,7 @@ void readServoPositions() {
 void cmdMoveServos() {
   //broadcastSpeed();    // servos can forget their speed, or may have reset since we booted
   
-  PositionTuple tuple;
+  IDTuple tuple;
   int count = 0;
   
   char *arg = CmdMgr.next();
@@ -441,7 +485,7 @@ void cmdMoveServos() {
     if(parsePositionTuple(arg, &tuple) == false) return;
     count++;
     
-    Servos.setCurPose(tuple.id, tuple.angle);
+    Servos.setCurPose(tuple.id, tuple.value);
   } while(arg = CmdMgr.next());
   
   Servos.writePose();
@@ -457,7 +501,7 @@ void cmdMoveServos() {
 void cmdInterpolateServos() {
 #if 0
   const int maxAngles = NumServos;
-  PositionTuple angles[maxAngles];
+  IDTuple angles[maxAngles];
   int count = 0;
   
   // parse any number of "id:angle" pairs
@@ -646,37 +690,63 @@ void cmdCircle() {
   } while(now < end);
 }
 
-// expects up to 6 space-delimited ints 0-255
+// expects space-delimited ints 0-255, or space delimited <index>:<angle> pairs
 void cmdPWMPins() {
-  const char *SetPWMUsageMsg = "Error: takes up to 4 arguments between 0 and 255";
+  const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 65535, or <index>:<value> pairs where <index> starts at 1.";
 
   long channelValues[NumPWMPins];
   int count = 0;
+
+  char *arg = CmdMgr.next();
+  if(arg == NULL) {
+   printlnError("Error: no arguments");
+   return;
+  }
   
-  while(char *arg = CmdMgr.next()) {
+  // see if we have a <index>:<value> tuple, or just an integer
+  boolean parsingTuples = strstr(arg, ":") != NULL;
+  
+  do {
+    int index;
+    long value;
+    
     if(count >= NumPWMPins) {
       printlnError(SetPWMUsageMsg);
       return;
     }
-  
-    char *end;
-    long v = strtol(arg, &end, 10);
-    if (*end != '\0' || v < 0 || v > MAX_PWM) {
-      printlnError(SetPWMUsageMsg);
-      return;
+
+    // <index>:<PWM value>
+    if(parsingTuples) {
+      IDTuple tuple;
+      if(parsePWMTuple(arg, &tuple) == false) return;
+      index = tuple.id - 1;   // convert to zero-based index
+      value = tuple.value;
+      
+      if(index < 0 || index >= NumPWMPins) {
+        printError("Index must be between 1 and ");
+        printlnError(NumPWMPins);
+        return;
+      }
+    }
+    
+    // just a PWM value
+    else {
+      char *end;
+      index = count;
+      value = parsePWM(arg);
+      if (value < 0) {
+        printlnError(SetPWMUsageMsg);
+        return;
+      }
     }
     
     printInfo("Setting pin ");
-    printInfo(PWMPins[count]);
+    printInfo(PWMPins[index]);
     printInfo(" to ");
-    printlnInfo(v);
-    channelValues[count++] = v;
-  }
-  
-  if(count == 0) {
-    printlnError("Error: no arguments");
-    return;
-  }
+    printlnInfo(value);
+    channelValues[index] = value;
+    count++;
+  } while(arg = CmdMgr.next());
   
   for(int i = 0; i < count; i++) {
     long c = channelValues[i];
@@ -770,7 +840,7 @@ void setup() {
   // TODO: assign static IP based on lowest present servo ID
   Serial.print("Starting ethernet server on address: ");
 
-  Ethernet.begin(MAC, IP, GATEWAY, SUBNET);
+  Ethernet.begin(MAC, IP);//, GATEWAY, SUBNET);
     
   TCPserver.begin();
   Serial.println(Ethernet.localIP());
