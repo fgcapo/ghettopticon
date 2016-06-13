@@ -10,6 +10,7 @@
 #include <ax12.h>
 #include <BioloidController2.h>    // use the bug-fixed version 
 #include <SC.h>
+#include <PWM.h>
 
 // Comment this out to read and write from Serial instead of Ethernet.
 // Arduino IDE is wigging out when selecting which ethernet library to use; see line 50.
@@ -24,6 +25,7 @@
 
 // this flag will invert PWM output (255-output), for active-low devices
 #define INVERT_HIGH_AND_LOW
+#define MAX_PWM 65535
 
 
 // Ethernet via ENC28J60 
@@ -54,7 +56,7 @@
   #include <SPI.h>
   #include <Ethernet.h>
 
-  const char ID_IP = 76;
+  const char ID_IP = 77;
 
   IPAddress IP(10,0,0,ID_IP);
   IPAddress GATEWAY(10,0,0,1);
@@ -74,7 +76,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 // globals
 
-const int PWMPins[] = {/*12,*/ 13, 14, 15};
+const int PWMPins[] = {11, 12, 13, 14, 15};
 const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 
 const int NumServos = 32;
@@ -648,7 +650,7 @@ void cmdCircle() {
 void cmdPWMPins() {
   const char *SetPWMUsageMsg = "Error: takes up to 4 arguments between 0 and 255";
 
-  int channelValues[NumPWMPins];
+  long channelValues[NumPWMPins];
   int count = 0;
   
   while(char *arg = CmdMgr.next()) {
@@ -659,7 +661,7 @@ void cmdPWMPins() {
   
     char *end;
     long v = strtol(arg, &end, 10);
-    if (*end != '\0' || v < 0 || v > 255) {
+    if (*end != '\0' || v < 0 || v > MAX_PWM) {
       printlnError(SetPWMUsageMsg);
       return;
     }
@@ -677,11 +679,13 @@ void cmdPWMPins() {
   }
   
   for(int i = 0; i < count; i++) {
-    int c = channelValues[i];
+    long c = channelValues[i];
 #ifdef INVERT_HIGH_AND_LOW
-    c = 255 - c;
+    c = MAX_PWM - c;
 #endif
-    analogWrite(PWMPins[i], c);
+    //analogWrite(PWMPins[i], c);
+    Serial.println(c);
+    pwmWriteHR(PWMPins[i], c);
   }
   
   printAck("OK set ");
@@ -779,6 +783,14 @@ void setup() {
     int id = Servos.getId(i);
     Servos.setNextPose(id, Servos.getCurPose(id));
   }*/
+  
+  //Frequency: 151 Hz
+  //Number of Possible Duties: 52981
+  //Resolution: 15 bit
+  //Tests indicate full 16 bits of PWM division
+  InitTimersSafe(); //initialize all timers except for 0, to save time keeping functions
+  Serial.print("setting PWM pin frequeny: ");
+  Serial.println(SetPinFrequency(PWMPins[0], 151));    // TODO for all PWM pins on arduino mega
   
   readVoltage();
   readServoPositions();
