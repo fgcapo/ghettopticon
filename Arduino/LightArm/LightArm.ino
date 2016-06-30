@@ -23,9 +23,18 @@
   #define COMM_ETHERNET
 #endif*/
 
+
+//////////////////////////////////////////////////////////////////////////////////////
+// PWM globals
+/////////////////////////////////////////////////////////////////////////////////////
+
 // this flag will invert PWM output (255-output), for active-low devices
 #define INVERT_HIGH_AND_LOW
+
 #define MAX_PWM 65535
+
+const int PWMPins[] = {11, 12, 13, 14, 15};
+const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 
 
 // Ethernet via ENC28J60 
@@ -73,11 +82,9 @@
 
 #include <PrintLevel.h>
 
-/////////////////////////////////////////////////////////////////////////////////
-// globals
-
-const int PWMPins[] = {11, 12, 13, 14, 15};
-const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
+/////////////////////////////////////////////////////////////////////////////////////
+// Servo globals
+/////////////////////////////////////////////////////////////////////////////////////
 
 const int NumServos = 32;
 BioloidController Servos(1000000);
@@ -102,6 +109,7 @@ const char *MsgPWMTupleFormatError = "Error: takes pairs in the form <index>:<PW
 
 /////////////////////////////////////////////////////////////////////////////////////////
 // Command Manager and forward declarations for commands accessible from text interface
+/////////////////////////////////////////////////////////////////////////////////////////
 
 struct IDTuple { int id; long value; };
 
@@ -148,6 +156,7 @@ SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // helpers
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 void broadcastSpeed() {
   ax12SetRegister2(BroadcastID, AX_GOAL_SPEED_L, gServoSpeed);
@@ -690,7 +699,7 @@ void cmdCircle() {
   } while(now < end);
 }
 
-// expects space-delimited ints 0-255, or space delimited <index>:<angle> pairs
+// expects space-delimited ints 0-65535, or space delimited <index>:<pwm> pairs
 void cmdPWMPins() {
   const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 65535, or <index>:<value> pairs where <index> starts at 1.";
 
@@ -740,7 +749,7 @@ void cmdPWMPins() {
       }
     }
     
-    printInfo("Setting pin ");
+    printInfo("Set pin ");
     printInfo(PWMPins[index]);
     printInfo(" to ");
     printlnInfo(value);
@@ -754,7 +763,6 @@ void cmdPWMPins() {
     c = MAX_PWM - c;
 #endif
     //analogWrite(PWMPins[i], c);
-    Serial.println(c);
     pwmWriteHR(PWMPins[i], c);
   }
   

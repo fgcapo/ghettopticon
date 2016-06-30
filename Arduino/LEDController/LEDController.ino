@@ -5,13 +5,24 @@
 //////////////////////////////////////////////////////////////////////////////////////
 
 #include <SC.h>
+#include <PWM.h>
 
 // Comment this out to read and write from Serial instead of Ethernet.
 // Arduino IDE is wigging out when selecting which ethernet library to use; see line 35.
-//#define COMM_ETHERNET
+#define COMM_ETHERNET
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+// PWM globals
+/////////////////////////////////////////////////////////////////////////////////////
 
 // this flag will invert PWM output (255-output), for active-low devices
 #define INVERT_HIGH_AND_LOW
+
+#define MAX_PWM 65535
+
+const int PWMPins[] = {/*3, 5, 6, 9, 10,*/ 11};  // Arduino Uno PWM pins
+const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 
 
 // Ethernet via ENC28J60 
@@ -57,8 +68,20 @@
   #define gPrinter Client
 #endif
 
-  //#define gPrinter Serial
 #include <PrintLevel.h>
+
+
+const char *MsgPWMTupleFormatError = "Error: takes up to 6 arguments between 0 and 255";
+
+/////////////////////////////////////////////////////////////////////////////////////////
+// Command Manager and forward declarations for commands accessible from text interface
+/////////////////////////////////////////////////////////////////////////////////////////
+
+struct IDTuple { int id; long value; };
+
+int parseID(const char *arg);
+boolean parsePWMTuple(char *s, IDTuple *out);
+int parseListOfIDs(int *outIDs, int maxIDs);
 
 void cmdUnrecognized(const char *cmd);
 void cmdPWMPins();
@@ -70,13 +93,12 @@ SerialCommand::Entry CommandsList[] = {
   {NULL,     NULL}
 };
 
-struct IDTuple { int id, value; };
-
 SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
-const int PWMPins[] = {3, 5, 6, 9, 10, 11};  // Arduino Uno PWM pins
-const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 
-const char *MsgPWMTupleFormatError = "Error: takes up to 6 arguments between 0 and 255";
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// helpers
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 // Takes a string of an integer (numeric chars only). Returns the integer on success.
 // Prints error and returns 0 if there is a parse error or the ID is out of range.
@@ -84,9 +106,8 @@ int parseID(const char *arg) {
   char *end;
   int id = strtol(arg, &end, 10);
 
-  if(*end != '\0' || id < 1 || id > NumPWMPins) {
-      printError("Error: Index must be between 1 and ");
-      printlnError(NumPWMPins);
+  if(*end != '\0' || id < 1 || id > 253) {
+      printlnError("Error: ID must be between 1 and 253");
       return 0;
   }
   
@@ -95,12 +116,13 @@ int parseID(const char *arg) {
 
 // Takes a string of an integer (numeric chars only). Returns the integer on success.
 // Prints error and returns -1 if there is a parse error or the PWM value is out of range.
-int parsePWM(const char *arg) {
+long parsePWM(const char *arg) {
   char *end;
   long v = strtol(arg, &end, 10);
 
-  if(*end != '\0' || v < 0 || v > 255) {
-      printlnError("Error: PWM value must be between 0 and 255");
+  if(*end != '\0' || v < 0 || v > MAX_PWM) {
+      printlnError("Error: PWM value must be between 0 and ");
+      printlnError(MAX_PWM);
       return -1;
   }
   
@@ -125,11 +147,11 @@ boolean parsePWMTuple(char *s, IDTuple *out) {
     return false;
   }
   
-  int pwm = parsePWM(sPWM);
+  long pwm = parsePWM(sPWM);
   if(pwm == -1) return false;
   
   out->id = index;
-  out->value = pwm;
+  out->value = (int)pwm;
   return true;
 }
 
@@ -138,11 +160,11 @@ void cmdUnrecognized(const char *cmd) {
   printlnError("unrecognized command");
 }
 
-// expects space-delimited ints 0-255, or space delimited <index>:<angle> pairs
+// expects space-delimited ints 0-65535, or space delimited <index>:<pwm> pairs
 void cmdPWMPins() {
-  const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 255, or <index>:<value> pairs where <index> starts at 1.";
+  const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 65535, or <index>:<value> pairs where <index> starts at 1.";
 
-  int channelValues[NumPWMPins];
+  long channelValues[NumPWMPins];
   int count = 0;
 
   char *arg = CmdMgr.next();
@@ -181,14 +203,14 @@ void cmdPWMPins() {
     else {
       char *end;
       index = count;
-      value = strtol(arg, &end, 10);
-      if (*end != '\0' || value < 0 || value > 255) {
+      value = parsePWM(arg);
+      if (value < 0) {
         printlnError(SetPWMUsageMsg);
         return;
       }
     }
     
-    printInfo("Setting pin ");
+    printInfo("Set pin ");
     printInfo(PWMPins[index]);
     printInfo(" to ");
     printlnInfo(value);
@@ -197,11 +219,12 @@ void cmdPWMPins() {
   } while(arg = CmdMgr.next());
   
   for(int i = 0; i < count; i++) {
-    int c = channelValues[i];
+    long c = channelValues[i];
 #ifdef INVERT_HIGH_AND_LOW
-    c = 255 - c;
+    c = MAX_PWM - c;
 #endif
-    analogWrite(PWMPins[i], c);
+    //analogWrite(PWMPins[i], c);
+    pwmWriteHR(PWMPins[i], c);
   }
   
   printAck("OK set ");
