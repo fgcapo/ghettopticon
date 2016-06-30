@@ -1,7 +1,8 @@
 // Arduino sketch which outputs PWM for a set of channels based on serial input.
 // Serial commands accepted:
-// - pwm <pwm1> <pwm2> ..., where <pwmN> is 0-255 and N is up to NumChannels
+// - pwm <pwm1> <pwm2> ..., where <pwmN> is 0-65535 and N is up to NumChannels
 // - pwm <index1>:<pwm1> <index2>:<pwm2> ..., where <indexN> is 1-based index into the PWMPins list
+// - plevel <level>, change the amount of response text
 //////////////////////////////////////////////////////////////////////////////////////
 
 #include <SC.h>
