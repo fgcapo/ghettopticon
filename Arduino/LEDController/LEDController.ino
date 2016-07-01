@@ -54,13 +54,13 @@ const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
   #include <SPI.h>
   #include <Ethernet.h>
 
-  const char ID_IP = 60;
+  const uint16_t PORT = 1337;
+  const uint8_t ID_IP = 69;
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
 
   IPAddress IP(10,0,0,ID_IP);
   IPAddress GATEWAY(10,0,0,1);
   IPAddress SUBNET(255, 255, 255, 0);
-  const unsigned int PORT = 1337;
-  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
 
   EthernetServer TCPserver(PORT);
 
@@ -250,21 +250,20 @@ void cmdSetPrintLevel() {
   printlnAck(PrintLevel::toString());
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// setup & loop
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void setup() {
   Serial.begin(38400);
-  printAlways("PWM controller. PWM pins are expected to be ");
   
-  for(int i = 0; i < NumPWMPins; i++) {
-    pinMode(PWMPins[i], OUTPUT);
-    
-    // high = off, so start high
-    analogWrite(PWMPins[i], 255);
-
-    if(i != 0) printAlways(", ");
-    printAlways(PWMPins[i]);
-  }
-  
-  printAlways(".\n");
+  //Frequency: 151 Hz
+  //Number of Possible Duties: 52981
+  //Resolution: 15 bit
+  //Tests indicate full 16 bits of PWM division
+  InitTimersSafe(); //initialize all timers except for 0, to save time keeping functions
+  Serial.print("setting PWM pin frequeny: ");
+  Serial.println(SetPinFrequency(PWMPins[0], 151));    // TODO for all PWM pins on arduino mega
 
 #ifdef COMM_ETHERNET
   // setup ethernet module
@@ -277,11 +276,19 @@ void setup() {
   Serial.println(Ethernet.localIP());
 #endif
 
-  // fiddle with PWM frequency
-  //TCCR2B = _BV(CS00);
-  /*TCCR0B = TCCR0B & 0b11111000 | 1;
-  TCCR1B = TCCR1B & 0b11111000 | 1;
-  TCCR2B = TCCR2B & 0b11111000 | 1;*/
+  printAlways("PWM controller. PWM pins are expected to be ");
+  
+  for(int i = 0; i < NumPWMPins; i++) {
+    pinMode(PWMPins[i], OUTPUT);
+    
+    // high = off, so start high
+    //analogWrite(PWMPins[i], 255);
+
+    if(i != 0) printAlways(", ");
+    printAlways(PWMPins[i]);
+  }
+  
+  printAlways(".\n");
 }
 
 void loop() {

@@ -65,13 +65,13 @@ const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
   //#include <SPI.h>
   //#include <Ethernet.h>
 
-  const char ID_IP = 77;
-
+  const uint16_t PORT = 1337;
+  const uint8_t ID_IP = 72;
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
+  
   IPAddress IP(10,0,0,ID_IP);
   IPAddress GATEWAY(10,0,0,1);
   IPAddress SUBNET(255, 255, 255, 0);
-  const unsigned int PORT = 1337;
-  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
 
   EthernetServer TCPserver(PORT);
 
@@ -699,6 +699,37 @@ void cmdCircle() {
   } while(now < end);
 }
 
+void cmdSetID() {
+
+  const char *arg1 = CmdMgr.next();
+  const char *arg2 = CmdMgr.next();
+  
+  if(arg1 == NULL || arg2 == NULL) {
+    printlnError("Error: usage: <old ID> <new ID>");
+    return;
+  }
+
+  int id = parseID(arg1);
+  int newID = parseID(arg2);
+  
+  if(id == 0 || newID == 0) return;
+  
+  const int AX_START = 255;
+  const int AX_ID_LENGTH = 4;
+  
+  int checksum = (~(id + AX_ID_LENGTH + AX_WRITE_DATA + AX_ID + newID))&0xFF;
+  setTXall();
+  ax12write(AX_START);                // Send Instructions over Serial
+  ax12write(AX_START);
+  ax12write(id);
+  ax12write(AX_ID_LENGTH);
+  ax12write(AX_WRITE_DATA);
+  ax12write(AX_ID);
+  ax12write(newID);
+  ax12write(checksum);
+  setRX(0);
+}
+
 // expects space-delimited ints 0-65535, or space delimited <index>:<pwm> pairs
 void cmdPWMPins() {
   const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 65535, or <index>:<value> pairs where <index> starts at 1.";
@@ -788,44 +819,20 @@ void cmdSetPrintLevel() {
   printlnAlways(PrintLevel::toString());
 }
 
-
-void cmdSetID() {
-
-  const char *arg1 = CmdMgr.next();
-  const char *arg2 = CmdMgr.next();
-  
-  if(arg1 == NULL || arg2 == NULL) {
-    printlnError("Error: usage: <old ID> <new ID>");
-    return;
-  }
-
-  int id = parseID(arg1);
-  int newID = parseID(arg2);
-  
-  if(id == 0 || newID == 0) return;
-  
-  const int AX_START = 255;
-  const int AX_ID_LENGTH = 4;
-  
-  int checksum = (~(id + AX_ID_LENGTH + AX_WRITE_DATA + AX_ID + newID))&0xFF;
-  setTXall();
-  ax12write(AX_START);                // Send Instructions over Serial
-  ax12write(AX_START);
-  ax12write(id);
-  ax12write(AX_ID_LENGTH);
-  ax12write(AX_WRITE_DATA);
-  ax12write(AX_ID);
-  ax12write(newID);
-  ax12write(checksum);
-  setRX(0);
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 // setup & loop
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
   Serial.begin(38400);
+
+  //Frequency: 151 Hz
+  //Number of Possible Duties: 52981
+  //Resolution: 15 bit
+  //Tests indicate full 16 bits of PWM division
+  InitTimersSafe(); //initialize all timers except for 0, to save time keeping functions
+  Serial.print("setting PWM pin frequeny: ");
+  Serial.println(SetPinFrequency(PWMPins[0], 151));    // TODO for all PWM pins on arduino mega
 
   // look for first ID that responds
   int i = 1;
@@ -861,14 +868,6 @@ void setup() {
     int id = Servos.getId(i);
     Servos.setNextPose(id, Servos.getCurPose(id));
   }*/
-  
-  //Frequency: 151 Hz
-  //Number of Possible Duties: 52981
-  //Resolution: 15 bit
-  //Tests indicate full 16 bits of PWM division
-  InitTimersSafe(); //initialize all timers except for 0, to save time keeping functions
-  Serial.print("setting PWM pin frequeny: ");
-  Serial.println(SetPinFrequency(PWMPins[0], 151));    // TODO for all PWM pins on arduino mega
   
   readVoltage();
   readServoPositions();
