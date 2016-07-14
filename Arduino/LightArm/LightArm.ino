@@ -19,7 +19,7 @@
 #define COMM_ETHERNET
 
 // Comment this in to allow greater range of movement for the first servo.
-#define GIMBAL_MODE
+//#define GIMBAL_MODE
 
 /*#define COMM_ETHERNET_ENC28J60
 //#define COMM_ETHERNET_SHIELD
