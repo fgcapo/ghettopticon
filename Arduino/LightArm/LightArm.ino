@@ -1,4 +1,6 @@
-// Arduino and Arbotix sketch for controlling multiple Dynamixel Servos.
+// Arduino sketch for controlling multiple Dynamixel Servos over ethernet or serial.
+// Apologies this file is so large; the Arduino IDE doesn't handle includes and macros
+// very well, and I want to keep it easy for others to compile.
 // 
 // Send text commands via either ethernet or serial (see flag COMM_ETHERNET).
 // Set amount of response text with command plevel (see PrintLevel.h)
@@ -15,6 +17,9 @@
 // Comment this out to read and write from Serial instead of Ethernet.
 // Arduino IDE is wigging out when selecting which ethernet library to use; see line 50.
 #define COMM_ETHERNET
+
+// Comment this in to allow greater range of movement for the first servo.
+#define GIMBAL_MODE
 
 /*#define COMM_ETHERNET_ENC28J60
 //#define COMM_ETHERNET_SHIELD
@@ -41,37 +46,32 @@ const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 // Library: https://github.com/ntruchsess/arduino_uip
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Pinout - Arduino Mega:
-// VCC (Green) -   3.3V
-// GND (Gr Wh) -    GND 
-// SCK (Bl Wh) - Pin 52
-// SO  (Blue)  - Pin 50
-// SI  (Br Wh) - Pin 51
-// CS  (Brown) - Pin 53  # Selectable with the ether.begin() function
-//
-// Pinout - Arduino Uno:
-// VCC (Green) -   3.3V
-// GND (Gr Wh) -    GND
-// SCK (Bl Wh) - Pin 13
-// SO  (Blue)  - Pin 12
-// SI  (Br Wh) - Pin 11
-// CS  (Brown) - Pin 8   # Selectable with the ether.begin() function
+// Pinout      - Arduino Mega - Arduino Uno
+// VCC (Green) -         3.3V -      
+// GND (Gr Wh) -          GND -      
+// SCK (Bl Wh) -       Pin 52 -      Pin 13
+// SO  (Blue)  -       Pin 50 -      Pin 12
+// SI  (Br Wh) -       Pin 51 -      Pin 11
+// CS  (Brown) -       Pin 53 -      Pin 8   # Selectable with ether.begin()
 #ifdef COMM_ETHERNET
   
   // For ENC28J60 card
-  #include <UIPEthernet.h>
+  //#include <UIPEthernet.h>
   
   // For Arduino Ethernet Shield
-  //#include <SPI.h>
-  //#include <Ethernet.h>
+  #include <SPI.h>
+  #include <Ethernet.h>
 
   const uint16_t PORT = 1337;
-  const uint8_t ID_IP = 72;
-  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,ID_IP};
+  const uint8_t IP_A = 10;
+  const uint8_t IP_B = 0;
+  const uint8_t IP_C = 2;
+  const uint8_t IP_D = 1;  // used to set MAC address
   
-  IPAddress IP(10,0,0,ID_IP);
-  IPAddress GATEWAY(10,0,0,1);
-  IPAddress SUBNET(255, 255, 255, 0);
+  IPAddress IP(IP_A, IP_B, IP_C, IP_D);
+  IPAddress GATEWAY(10, 0, 0, 1);
+  IPAddress SUBNET(255, 255, 0, 0);
+  static uint8_t MAC[6] = {0x00,0x01,0x02,0x03,0xa4,IP_D};
 
   EthernetServer TCPserver(PORT);
 
@@ -86,7 +86,7 @@ const int NumPWMPins = sizeof(PWMPins)/sizeof(*PWMPins);
 // Servo globals
 /////////////////////////////////////////////////////////////////////////////////////
 
-const int NumServos = 32;
+const int MaxServos = 32;
 BioloidController Servos(1000000);
 
 const int BroadcastID = 254;
@@ -114,7 +114,7 @@ const char *MsgPWMTupleFormatError = "Error: takes pairs in the form <index>:<PW
 struct IDTuple { int id; long value; };
 
 int parseID(const char *arg);
-int parseAngle(const char *arg);
+int parseAngle(const char *arg, int minAngle = 200, int maxAngle = 824);
 boolean parsePositionTuple(char *s, IDTuple *out);
 boolean parsePWMTuple(char *s, IDTuple *out);
 int parseListOfIDs(int *outIDs, int maxIDs);
@@ -157,11 +157,6 @@ SerialCommand CmdMgr(CommandsList, cmdUnrecognized);
 /////////////////////////////////////////////////////////////////////////////////////////////
 // helpers
 /////////////////////////////////////////////////////////////////////////////////////////////
-
-void broadcastSpeed() {
-  ax12SetRegister2(BroadcastID, AX_GOAL_SPEED_L, gServoSpeed);
-}
-
 /*
 // Converts string to double; returns true if successful.
 // Returns false if str contains any inappropriate characters, including whitespace.
@@ -220,20 +215,21 @@ int parseID(const char *arg) {
 }
 
 // Takes a string of an integer (numeric chars only). Returns the integer on success.
-// Prints error and returns 0 if there is a parse error or the angle is out of range.
-// Contrains from -90 to 90 degrees
-int parseAngle(const char *arg) {
+// Prints error and returns -1 if there is a parse error or the angle is out of range.
+int parseAngle(const char *arg, int minAngle, int maxAngle) {
   char *end;
   int angle = strtol(arg, &end, 10);
   
-  if(*end != '\0' || angle < 200 || angle > 824) {
-    printlnError("Error: angle must be between 200 and 824");
-    return 0;
+  if(*end != '\0' || angle < minAngle || angle > maxAngle) {
+    printError("Error: angle must be between ");
+    printError(minAngle);
+    printError(" and ");
+    printlnError(maxAngle);
+    return -1;
   }
   
   return angle;
 }
-
 
 // Takes a string of an integer (numeric chars only). Returns the integer on success.
 // Prints error and returns -1 if there is a parse error or the PWM value is out of range.
@@ -287,8 +283,15 @@ boolean parsePositionTuple(char *s, IDTuple *out) {
     return false;
   }
   
+#ifdef GIMBAL_MODE
+  // the first servo should allowed full movement
+  int angle;
+  if(id == 1) angle = parseAngle(sAngle, 0, 1023);
+  else angle = parseAngle(sAngle);
+#else
   int angle = parseAngle(sAngle);
-  if(angle == 0) return false;
+#endif
+  if(angle == -1) return false;
   
   out->id = id;
   out->value = angle;
@@ -321,6 +324,9 @@ boolean parsePWMTuple(char *s, IDTuple *out) {
   return true;
 }
 
+void broadcastSpeed() {
+  ax12SetRegister2(BroadcastID, AX_GOAL_SPEED_L, gServoSpeed);
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 // commands accessible from text interface
@@ -343,15 +349,15 @@ void readVoltage() {
 
 // Relax a list of servos, or all if no arguments
 void cmdRelax() {
-  const int maxAngles = NumServos;
+  const int maxAngles = MaxServos;
   int ids[maxAngles];
   
   int count = parseListOfIDs(ids, maxAngles);
   if(count == -1) return;
   
   if(count == 0) {
-    count = NumServos;
-    for(int i = 0; i < NumServos; i++) {
+    count = MaxServos;
+    for(int i = 0; i < MaxServos; i++) {
       Relax(Servos.getId(i));
     }
   }
@@ -370,15 +376,15 @@ void cmdRelax() {
 }
 
 void cmdTorque() {
-  const int maxAngles = NumServos;
+  const int maxAngles = MaxServos;
   int ids[maxAngles];
   
   int count = parseListOfIDs(ids, maxAngles);
   if(count == -1) return;
   
   if(count == 0) {
-    count = NumServos;
-    for(int i = 0; i < NumServos; i++) {
+    count = MaxServos;
+    for(int i = 0; i < MaxServos; i++) {
       TorqueOn(Servos.getId(i));
     }
   }
@@ -430,11 +436,11 @@ void cmdSetMaxSpeed() {
 
 void readServoPositions() {
   printAck("Servo Readings:");
-  printlnAck(NumServos);
+  printlnAck(MaxServos);
   
   //Servos.readPose();
 
-  for(int i = 0; i < NumServos; i++) {
+  for(int i = 0; i < MaxServos; i++) {
     int id = Servos.getId(i);
     //int pos = Servos.getCurPose(id);
     int pos = Servos.readPose(i); //in case we've relaxed and some one manually moved the servos
@@ -455,10 +461,10 @@ void readServoPositions() {
 
   // python dictionary notation;
   // allocate 3 for {}\0, and 8 for each pos, though (4 + comma) should be max digits
-  char dictBuf[3 + NumServos * (3+1+4+1)] = "{}";
+  char dictBuf[3 + MaxServos * (3+1+4+1)] = "{}";
   int ix = 1;
 
-  for(int i = 0; i < NumServos; i++) {
+  for(int i = 0; i < MaxServos; i++) {
     int id = Servos.getId(i);
     int pos = Servos.getCurPose(id);
     if(pos < 0 || pos > 1024) continue;
@@ -486,7 +492,7 @@ void cmdMoveServos() {
 
    // see what kind of arguments we have
    do {
-    if(count >= NumServos) {
+    if(count >= MaxServos) {
       printlnError("Too many arguments");
       return;
     }
@@ -509,7 +515,7 @@ void cmdMoveServos() {
 // We shall constrain the angle to 200 to 824, and assume and consider 0 a no-op.
 void cmdInterpolateServos() {
 #if 0
-  const int maxAngles = NumServos;
+  const int maxAngles = MaxServos;
   IDTuple angles[maxAngles];
   int count = 0;
   
@@ -566,7 +572,7 @@ void cmdInterpolateServos() {
 // Takes an array of packed servo positions. Position == 0 is no-op.
 void interpolateServosBinary(char *buffer, int len) {
 #if 0
-  int numAngles = min(len/2, NumServos);
+  int numAngles = min(len/2, MaxServos);
   long msLongest = 0;  // move time required by any move
   int maxSpeedInv = invertMaxSpeed();  // convert to ms per angle-unit to simplify calculation
   
@@ -618,7 +624,7 @@ void interpolateServosBinary(char *buffer, int len) {
 
 // argument is number of angles to be transmitted
 void cmdInterpolateServosBinary() {
-  int numAngles = NumServos;
+  int numAngles = MaxServos;
 
   if(char *arg = CmdMgr.next()) {
     char *end;
@@ -627,7 +633,7 @@ void cmdInterpolateServosBinary() {
     // keep going even if there's an error, because the host will probably send the data anyway?
     if(end != '\0' || n < 1 || n > 253) {
       printAlways("Error: argument is number of servo angles to be sent, should be in [1, 253]. Assuming ");
-      printlnAlways(NumServos);
+      printlnAlways(MaxServos);
       //return;
     }
     else {
@@ -641,10 +647,10 @@ void cmdInterpolateServosBinary() {
   CmdMgr.enterBinaryMode(numAngles*2, interpolateServosBinary);
 }
 
-
+// moves all servos to the specified position
 void loadPose(int pos = 512) {
 
-  for(int i = 0; i < NumServos; i++) {
+  for(int i = 0; i < MaxServos; i++) {
     int id = Servos.getId(i);
     Servos.setCurPose(id, pos);
   }
@@ -652,11 +658,12 @@ void loadPose(int pos = 512) {
   broadcastSpeed();
   Servos.writePose();
   printAck("Moving ");
-  printAck(NumServos);
+  printAck(MaxServos);
   printAck(" servos to position index: ");
   printlnAck(pos);
 }
 
+// debug tool: moves all servos to a preprogrammed position, selected by index 1-5
 void cmdLoadPose() {
   int Positions[] = {490, 500, 512, 612, 712};
   int NumPositions = sizeof(Positions) / sizeof(*Positions);
@@ -672,6 +679,9 @@ int sinToServoPos(float sinx) {
   return round(512 + (sinx * 300));
 }
 
+// moves 2 servos in a circle
+// - first command line arg is the ID of the lower servo
+// - second command line arg is the number of seconds to complete the circle
 void cmdCircle() {
   int id1 = parseID(CmdMgr.next());
   int id2 = id1 + 1;
@@ -699,6 +709,7 @@ void cmdCircle() {
   } while(now < end);
 }
 
+// changes the ID of a servo from the first command line arg to the second
 void cmdSetID() {
 
   const char *arg1 = CmdMgr.next();
@@ -730,7 +741,7 @@ void cmdSetID() {
   setRX(0);
 }
 
-// expects space-delimited ints 0-65535, or space delimited <index>:<pwm> pairs
+// expects space-delimited ints 0-65535, or space delimited <index>:<pwm> pairs, where <index> is 1-based
 void cmdPWMPins() {
   const char *SetPWMUsageMsg = "Error: takes up to 6 arguments between 0 and 65535, or <index>:<value> pairs where <index> starts at 1.";
 
@@ -802,6 +813,7 @@ void cmdPWMPins() {
   printlnAck(" pins");
 }
 
+// changes the amount of response text; see PrintLevel.h
 void cmdSetPrintLevel() {  
   if(char *arg = CmdMgr.next()) {
     if(CmdMgr.next()) {
@@ -826,10 +838,11 @@ void cmdSetPrintLevel() {
 void setup() {
   Serial.begin(38400);
 
-  //Frequency: 151 Hz
-  //Number of Possible Duties: 52981
-  //Resolution: 15 bit
-  //Tests indicate full 16 bits of PWM division
+  // Initialize the high resolution PWM library.
+  // Frequency: 151 Hz
+  // Number of Possible Duties: 52981
+  // Resolution: 15 bit
+  // Note: tests indicate full 16 bits of PWM division
   InitTimersSafe(); //initialize all timers except for 0, to save time keeping functions
   Serial.print("setting PWM pin frequeny: ");
   Serial.println(SetPinFrequency(PWMPins[0], 151));    // TODO for all PWM pins on arduino mega
@@ -847,15 +860,16 @@ void setup() {
 */
   // query for and read in the position of each servo
   // TODO: mod Servos class to query for IDs, and store lowest ID that responds
-  Servos.setup(NumServos/*, i*/);
+  Servos.setup(MaxServos/*, i*/);
   Servos.readPose();
+  broadcastSpeed();
 
 #ifdef COMM_ETHERNET
   // setup ethernet module
   // TODO: assign static IP based on lowest present servo ID
   Serial.print("Starting ethernet server on address: ");
 
-  Ethernet.begin(MAC, IP);//, GATEWAY, SUBNET);
+  Ethernet.begin(MAC, IP, GATEWAY, GATEWAY, SUBNET);
     
   TCPserver.begin();
   Serial.println(Ethernet.localIP());
@@ -864,7 +878,7 @@ void setup() {
   // Safe guard: the move interpolation code moves all servos, so if a servo starts
   // off-center, and we move another servo, the first servo will move to center (the default "next" position).
   // So set the target position of each servo to its current position
-  /*for(int i = 0; i < NumServos; i++) {
+  /*for(int i = 0; i < MaxServos; i++) {
     int id = Servos.getId(i);
     Servos.setNextPose(id, Servos.getCurPose(id));
   }*/
@@ -876,7 +890,7 @@ void setup() {
 }
 
 void loop() {
-  if(Servos.interpolating) Servos.interpolateStep();
+  //if(Servos.interpolating) Servos.interpolateStep();
 
 // read from EITHER serial OR network; otherwise we'll need multiple read buffers...
 #ifndef COMM_ETHERNET
@@ -884,8 +898,8 @@ void loop() {
 
 #else
   // TODO: edit EthernetServer to separate accepting a connection
-  // from reading from one, so we can great connectors
-  // Multiple connections? Yikes. Requires multiple buffers. Probably not.
+  // from reading from one, so we can great connectors?
+  // Proper support for multiple connections? Yikes. Requires multiple buffers. Probably not.
 
   // see if a client wants to say something; if so, save them as the client to respond to
   if(EthernetClient client = TCPserver.available()) {
